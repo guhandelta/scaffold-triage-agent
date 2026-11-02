@@ -11,7 +11,7 @@
           "triage"
         ],
         "summary": "Triage",
-        "description": "Decide whether to reply or escalate, trying each configured model in turn.",
+        "description": "Route the ticket, then let the models decide, trying each in turn.",
         "operationId": "triage",
         "requestBody": {
           "content": {
@@ -29,7 +29,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Decision"
+                  "$ref": "#/components/schemas/TriageResult"
                 }
               }
             }
@@ -172,6 +172,45 @@
           "body"
         ],
         "title": "TicketIn"
+      },
+      "TriageResult": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/Decision"
+          },
+          "route": {
+            "type": "string",
+            "title": "Route",
+            "description": "agent or human, from the routing rules"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider",
+            "description": "Model that decided, or rules / none"
+          },
+          "failed_attempts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Failed Attempts",
+            "description": "Models that failed before this one"
+          },
+          "ticket_id": {
+            "type": "string",
+            "title": "Ticket Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision",
+          "route",
+          "provider",
+          "failed_attempts",
+          "ticket_id"
+        ],
+        "title": "TriageResult",
+        "description": "A decision plus how it was reached: which model answered, and what failed first."
       },
       "ValidationError": {
         "properties": {

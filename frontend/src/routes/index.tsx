@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import type { FormEvent } from 'react'
 
 import { triageMutation } from '@/client/@tanstack/react-query.gen'
+import type { TriageResult } from '@/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -57,19 +58,37 @@ function TriagePage() {
       </Card>
 
       {triage.isError && <p className="text-sm text-destructive">Triage failed.</p>}
-      {triage.data && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{triage.data.action === 'escalate' ? 'Escalate to a person' : 'Reply'}</CardTitle>
-            <CardDescription>{triage.data.reasoning}</CardDescription>
-          </CardHeader>
-          {triage.data.reply_text && (
-            <CardContent>
-              <p className="whitespace-pre-wrap rounded-md bg-muted p-3">{triage.data.reply_text}</p>
-            </CardContent>
-          )}
-        </Card>
-      )}
+      {triage.data && <Result result={triage.data} />}
     </div>
+  )
+}
+
+function Result({ result }: { result: TriageResult }) {
+  const { decision } = result
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{decision.action === 'escalate' ? 'Escalate to a person' : 'Reply'}</CardTitle>
+        <CardDescription>{decision.reasoning}</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        {decision.reply_text && (
+          <p className="whitespace-pre-wrap rounded-md bg-muted p-3">{decision.reply_text}</p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Route: {result.route} · Decided by: {result.provider}
+        </p>
+        {result.failed_attempts.length > 0 && (
+          <div className="text-xs text-muted-foreground">
+            <p>Tried before that:</p>
+            <ul className="list-disc pl-5">
+              {result.failed_attempts.map((e) => (
+                <li key={e}>{e}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

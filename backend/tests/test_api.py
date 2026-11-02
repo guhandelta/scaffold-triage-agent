@@ -12,14 +12,14 @@ def test_health():
 def test_replies_to_a_plain_question():
     r = client.post("/api/triage", json={"subject": "Hi", "body": "How do I export?"})
     assert r.status_code == 200
-    assert r.json()["action"] == "reply"
-    assert r.json()["reply_text"]
+    assert r.json()["decision"]["action"] == "reply"
+    assert r.json()["decision"]["reply_text"]
 
 
 def test_escalates_sensitive_tickets():
     r = client.post("/api/triage", json={"subject": "Refund", "body": "I want my money back"})
-    assert r.json()["action"] == "escalate"
-    assert r.json()["reply_text"] is None
+    assert r.json()["decision"]["action"] == "escalate"
+    assert r.json()["decision"]["reply_text"] is None
 
 
 def test_rejects_empty_body():

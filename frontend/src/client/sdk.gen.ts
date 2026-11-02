@@ -21,7 +21,7 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 /**
  * Triage
  *
- * Decide whether to reply to a ticket or escalate it to a person.
+ * Route the ticket, then let the models decide, trying each in turn.
  */
 export const triage = <ThrowOnError extends boolean = false>(options: Options<TriageData, ThrowOnError>): RequestResult<TriageResponses, TriageErrors, ThrowOnError> => (options.client ?? client).post<TriageResponses, TriageErrors, ThrowOnError>({
     url: '/api/triage',

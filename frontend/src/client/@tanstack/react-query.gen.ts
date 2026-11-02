@@ -9,7 +9,7 @@ import type { HealthData, HealthResponse, TriageData, TriageError, TriageRespons
 /**
  * Triage
  *
- * Decide whether to reply to a ticket or escalate it to a person.
+ * Route the ticket, then let the models decide, trying each in turn.
  */
 export const triageMutation = (options?: Partial<Options<TriageData>>): UseMutationOptions<TriageResponse, TriageError, Options<TriageData>> => {
     const mutationOptions: UseMutationOptions<TriageResponse, TriageError, Options<TriageData>> = {

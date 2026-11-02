@@ -71,6 +71,37 @@ export type TicketIn = {
 };
 
 /**
+ * TriageResult
+ *
+ * A decision plus how it was reached: which model answered, and what failed first.
+ */
+export type TriageResult = {
+    decision: Decision;
+    /**
+     * Route
+     *
+     * agent or human, from the routing rules
+     */
+    route: string;
+    /**
+     * Provider
+     *
+     * Model that decided, or rules / none
+     */
+    provider: string;
+    /**
+     * Failed Attempts
+     *
+     * Models that failed before this one
+     */
+    failed_attempts: Array<string>;
+    /**
+     * Ticket Id
+     */
+    ticket_id: string;
+};
+
+/**
  * ValidationError
  */
 export type ValidationError = {
@@ -118,7 +149,7 @@ export type TriageResponses = {
     /**
      * Successful Response
      */
-    200: Decision;
+    200: TriageResult;
 };
 
 export type TriageResponse = TriageResponses[keyof TriageResponses];

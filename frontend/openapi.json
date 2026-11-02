@@ -11,7 +11,7 @@
           "triage"
         ],
         "summary": "Triage",
-        "description": "Decide whether to reply to a ticket or escalate it to a person.",
+        "description": "Decide whether to reply or escalate, trying each configured model in turn.",
         "operationId": "triage",
         "requestBody": {
           "content": {

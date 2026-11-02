@@ -15,6 +15,9 @@ from app.triage import decide as rules_decide
 
 log = logging.getLogger(__name__)
 
+# Hard rule: every model call runs at low effort. Not configurable, and tests check it.
+LOW_EFFORT = "low"
+
 SYSTEM_PROMPT = """You triage customer support tickets.
 
 Decide one action:
@@ -63,6 +66,7 @@ class ClaudeProvider:
         response = await self.client.messages.create(
             model=self.model,
             max_tokens=1024,
+            output_config={"effort": LOW_EFFORT},
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": _user_message(ticket)}],
         )
@@ -89,6 +93,7 @@ class OpenAIProvider:
                 {"role": "user", "content": _user_message(ticket)},
             ],
             response_format={"type": "json_object"},
+            reasoning_effort=LOW_EFFORT,
         )
         return parse_decision(response.choices[0].message.content or "")
 
@@ -109,6 +114,7 @@ class GoogleProvider:
             config={
                 "system_instruction": SYSTEM_PROMPT,
                 "response_mime_type": "application/json",
+                "thinking_config": {"thinking_level": LOW_EFFORT},
             },
         )
         return parse_decision(response.text or "")

@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # Models, tried in this order. A failure on one moves on to the next.
     claude_model: str = "claude-opus-5-5"
     openai_model: str = "gpt-5"
-    google_model: str = "gemini-2.5-pro"
+    google_model: str = "gemini-3.1-pro-preview"
     provider_order: str = "claude,openai,google"
 
     # Comma-separated origins allowed to call the API (the Vite dev server by default).

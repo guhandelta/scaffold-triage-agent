@@ -53,7 +53,7 @@ Secrets never go in `triage.yaml`. The environment can also override `PROVIDER_O
 ## Run it for development
 
 ```bash
-cd backend && uv sync && uv run uvicorn app.main:app --reload     # API on :8000
+cd backend && uv sync && uv run uvicorn app.main:app --reload --port 8001   # API on :8001
 cd frontend && npm install --legacy-peer-deps && npm run dev      # UI on :5173, proxies /api
 ```
 

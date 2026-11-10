@@ -1,7 +1,8 @@
 """Live check: send one sample ticket to each model that has a key, and print the result.
 
 Run from backend/: uv run python scripts/live_check.py
-Prints a status per provider. Keys are redacted from any error text.
+Prints one line per provider with the action and the reply text. Exits 1 if any keyed
+provider fails, so it can gate a deploy. Keys are redacted from any error text.
 """
 
 import asyncio
@@ -17,7 +18,7 @@ from app.schemas import TicketIn
 TICKET = TicketIn(subject="How do I export my data to CSV?", body="Where is the export button?")
 
 
-async def main() -> None:
+async def main() -> int:
     s = get_settings()
     secrets = [k for k in (s.anthropic_api_key, s.openai_api_key, s.google_api_key) if k]
     checks = [
@@ -29,6 +30,7 @@ async def main() -> None:
         ("openai", s.openai_api_key, lambda: OpenAIProvider(s.openai_api_key, s.openai_model)),
         ("google", s.google_api_key, lambda: GoogleProvider(s.google_api_key, s.google_model)),
     ]
+    failed = 0
     for name, key, make in checks:
         if not key:
             print(f"{name}: no key set, skipped")
@@ -36,11 +38,16 @@ async def main() -> None:
         try:
             decision = await make().decide(TICKET)
             print(f"{name}: OK action={decision.action.value}")
+            print(f"  reasoning: {decision.reasoning}")
+            print(f"  reply_text: {decision.reply_text or '(none)'}")
         except Exception as e:
+            failed += 1
             message = str(e)
             for secret in secrets:
                 message = message.replace(secret, "***")
             print(f"{name}: FAILED {type(e).__name__}: {message[:200]}")
+    return 1 if failed else 0
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    sys.exit(asyncio.run(main()))

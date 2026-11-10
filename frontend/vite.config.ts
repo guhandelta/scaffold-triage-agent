@@ -22,12 +22,22 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
-      // The escalation feature must be fully covered. The generated client, shadcn
-      // components and the triage page are not part of this gate.
+      // Every feature file must be fully covered. The generated client, the shadcn/ui
+      // components, route files and test helpers are outside the gate.
       include: [
+        'src/components/app-shell.tsx',
+        'src/components/decision-badge.tsx',
         'src/components/escalation-card.tsx',
-        'src/components/escalations-view.tsx',
         'src/components/escalations-page.tsx',
+        'src/components/escalations-view.tsx',
+        'src/components/stats-bar.tsx',
+        'src/components/ticket-list.tsx',
+        'src/components/tickets-page.tsx',
+        'src/components/triage-flow.tsx',
+        'src/components/triage-page.tsx',
+        'src/components/triage-result.tsx',
+        'src/lib/samples.ts',
+        'src/lib/tickets.ts',
       ],
       thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
     },

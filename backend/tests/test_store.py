@@ -81,3 +81,13 @@ def test_sqlite_creates_missing_folder(tmp_path):
         assert path.exists()
     finally:
         s.close()
+
+
+def test_list_all_is_newest_first(store):
+    store.save(TICKET, _result("old", Action.reply))
+    store.save(TICKET, _result("new", Action.escalate))
+    assert [r.ticket_id for r in store.list_all()] == ["new", "old"]
+
+
+def test_list_all_is_empty_to_start(store):
+    assert store.list_all() == []

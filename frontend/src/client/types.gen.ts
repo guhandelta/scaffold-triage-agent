@@ -184,6 +184,24 @@ export type TriageResponses = {
 
 export type TriageResponse = TriageResponses[keyof TriageResponses];
 
+export type ListTicketsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/tickets';
+};
+
+export type ListTicketsResponses = {
+    /**
+     * Response List Tickets
+     *
+     * Successful Response
+     */
+    200: Array<TicketRecord>;
+};
+
+export type ListTicketsResponse = ListTicketsResponses[keyof ListTicketsResponses];
+
 export type EscalationsData = {
     body?: never;
     path?: never;

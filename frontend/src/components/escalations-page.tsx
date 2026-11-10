@@ -19,7 +19,12 @@ export function EscalationsPage() {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-lg font-semibold">Escalations</h1>
+      <div>
+        <h1 className="text-xl font-semibold">Escalations</h1>
+        <p className="text-sm text-muted-foreground">
+          Tickets a person must handle. Assign an owner to pick one up.
+        </p>
+      </div>
       <EscalationsView
         items={list.data}
         isPending={list.isPending}

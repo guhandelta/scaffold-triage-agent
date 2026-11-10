@@ -1,9 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
-import { useQuery } from '@tanstack/react-query'
-import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router'
+import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 
-import { healthOptions } from '@/client/@tanstack/react-query.gen'
-import { Badge } from '@/components/ui/badge'
+import { AppShell } from '@/components/app-shell'
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: RootLayout,
@@ -11,30 +9,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootLayout() {
   return (
-    <div className="min-h-svh">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="font-semibold">
-              Triage Agent
-            </Link>
-            <Link to="/escalations" className="text-sm text-muted-foreground hover:underline">
-              Escalations
-            </Link>
-          </div>
-          <Health />
-        </div>
-      </header>
-      <main className="mx-auto max-w-3xl px-4 py-6">
-        <Outlet />
-      </main>
-    </div>
+    <AppShell>
+      <Outlet />
+    </AppShell>
   )
-}
-
-function Health() {
-  const { data, isError } = useQuery(healthOptions())
-  if (isError) return <Badge variant="destructive">API offline</Badge>
-  if (!data) return null
-  return <Badge variant="secondary">API ok · {data.agent}</Badge>
 }

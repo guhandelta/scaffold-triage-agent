@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AssignData, AssignErrors, AssignResponses, EscalationsData, EscalationsResponses, GetTicketData, GetTicketErrors, GetTicketResponses, HealthData, HealthResponses, TriageData, TriageErrors, TriageResponses } from './types.gen';
+import type { AssignData, AssignErrors, AssignResponses, EscalationsData, EscalationsResponses, GetTicketData, GetTicketErrors, GetTicketResponses, HealthData, HealthResponses, ListTicketsData, ListTicketsResponses, TriageData, TriageErrors, TriageResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -31,6 +31,13 @@ export const triage = <ThrowOnError extends boolean = false>(options: Options<Tr
         ...options.headers
     }
 });
+
+/**
+ * List Tickets
+ *
+ * Every triaged ticket, newest first.
+ */
+export const listTickets = <ThrowOnError extends boolean = false>(options?: Options<ListTicketsData, ThrowOnError>): RequestResult<ListTicketsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListTicketsResponses, unknown, ThrowOnError>({ url: '/api/tickets', ...options });
 
 /**
  * Escalations

@@ -68,3 +68,11 @@ def test_store_keeps_model_escalations_too():
     )
     store.save(TicketIn(subject="s", body="b"), result)
     assert [r.ticket_id for r in store.escalations()] == ["t1"]
+
+
+def test_ticket_list_is_newest_first_and_includes_replies(client):
+    first = _triage(client, "How do I export?", "Where is the export button?")
+    second = _triage(client, "Refund", "I want my money back")
+    items = client.get("/api/tickets").json()
+    assert [i["ticket_id"] for i in items] == [second["ticket_id"], first["ticket_id"]]
+    assert [i["result"]["decision"]["action"] for i in items] == ["escalate", "reply"]

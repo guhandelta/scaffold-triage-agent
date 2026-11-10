@@ -23,6 +23,8 @@ class TicketStore(Protocol):
 
     def get(self, ticket_id: str) -> TicketRecord: ...
 
+    def list_all(self) -> list[TicketRecord]: ...
+
     def escalations(self) -> list[TicketRecord]: ...
 
     def assign(self, ticket_id: str, owner: str) -> TicketRecord: ...
@@ -44,6 +46,11 @@ class MemoryTicketStore:
             if ticket_id not in self._records:
                 raise TicketNotFound(ticket_id)
             return self._records[ticket_id]
+
+    def list_all(self) -> list[TicketRecord]:
+        """Every ticket, newest first."""
+        with self._lock:
+            return list(reversed(self._records.values()))
 
     def escalations(self) -> list[TicketRecord]:
         """Tickets a person must handle: escalated by a rule or by a model."""
@@ -106,6 +113,11 @@ class SQLiteTicketStore:
         if row is None:
             raise TicketNotFound(ticket_id)
         return TicketRecord.model_validate_json(row[0])
+
+    def list_all(self) -> list[TicketRecord]:
+        with self._lock:
+            rows = self._db.execute("SELECT record FROM tickets ORDER BY rowid DESC").fetchall()
+        return [TicketRecord.model_validate_json(r[0]) for r in rows]
 
     def escalations(self) -> list[TicketRecord]:
         with self._lock:

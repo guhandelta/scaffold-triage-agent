@@ -10,6 +10,12 @@ router = APIRouter(prefix="/api", tags=["tickets"])
 StoreDep = Annotated[TicketStore, Depends(get_store)]
 
 
+@router.get("/tickets", response_model=list[TicketRecord])
+async def list_tickets(store: StoreDep) -> list[TicketRecord]:
+    """Every triaged ticket, newest first."""
+    return store.list_all()
+
+
 @router.get("/escalations", response_model=list[TicketRecord])
 async def escalations(store: StoreDep) -> list[TicketRecord]:
     """Every ticket a person must handle, with its owner if one is assigned."""

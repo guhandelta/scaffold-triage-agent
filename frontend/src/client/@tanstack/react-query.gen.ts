@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { assign, escalations, getTicket, health, type Options, triage } from '../sdk.gen';
-import type { AssignData, AssignError, AssignResponse, EscalationsData, EscalationsResponse, GetTicketData, GetTicketError, GetTicketResponse, HealthData, HealthResponse, TriageData, TriageError, TriageResponse } from '../types.gen';
+import { assign, escalations, getTicket, health, listTickets, type Options, triage } from '../sdk.gen';
+import type { AssignData, AssignError, AssignResponse, EscalationsData, EscalationsResponse, GetTicketData, GetTicketError, GetTicketResponse, HealthData, HealthResponse, ListTicketsData, ListTicketsResponse, TriageData, TriageError, TriageResponse } from '../types.gen';
 
 /**
  * Triage
@@ -57,6 +57,26 @@ const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions
     }
     return [params];
 };
+
+export const listTicketsQueryKey = (options?: Options<ListTicketsData>) => createQueryKey('listTickets', options);
+
+/**
+ * List Tickets
+ *
+ * Every triaged ticket, newest first.
+ */
+export const listTicketsOptions = (options?: Options<ListTicketsData>) => queryOptions<ListTicketsResponse, DefaultError, ListTicketsResponse, ReturnType<typeof listTicketsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listTickets({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listTicketsQueryKey(options)
+});
 
 export const escalationsQueryKey = (options?: Options<EscalationsData>) => createQueryKey('escalations', options);
 

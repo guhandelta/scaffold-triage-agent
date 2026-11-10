@@ -1,0 +1,29 @@
+# Run the whole app:            docker compose up --build      then open http://localhost:8080
+# Run it for your organization: ORG_DIR=./examples/acme-hosting docker compose up --build
+#
+# ORG_DIR is a folder with a triage.yaml and the docs it points to. It is mounted read-only, so
+# after editing it run `docker compose restart api`. API keys come from backend/.env when present.
+services:
+  api:
+    build: ./backend
+    env_file:
+      - path: backend/.env
+        required: false
+    environment:
+      TRIAGE_CONFIG: /org/${ORG_CONFIG:-triage.yaml}
+    volumes:
+      - ${ORG_DIR:-./backend}:/org:ro
+      - tickets:/var/lib/triage
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  tickets:

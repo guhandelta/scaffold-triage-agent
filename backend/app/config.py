@@ -1,7 +1,10 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 
 class Settings(BaseSettings):
@@ -18,8 +21,15 @@ class Settings(BaseSettings):
     google_model: str = "gemini-3.1-pro-preview"
     provider_order: str = "claude,openai,google"
 
-    # Where tickets are stored. Relative paths are taken from the backend folder.
-    database_path: str = Field(default="data/tickets.db", validation_alias="DATABASE_PATH")
+    # Where tickets are stored, and where the support docs live. Swap DOCS_PATH for your own docs.
+    database_path: str = Field(
+        default=str(BACKEND_DIR / "var" / "tickets.db"), validation_alias="DATABASE_PATH"
+    )
+    docs_path: str = Field(default=str(BACKEND_DIR / "data" / "docs"), validation_alias="DOCS_PATH")
+
+    # Who is calling when no identity headers are sent. A placeholder until real sign-in exists.
+    default_user: str = Field(default="Reviewer", validation_alias="DEFAULT_USER")
+    default_role: str = Field(default="reviewer", validation_alias="DEFAULT_ROLE")
 
     # Comma-separated origins allowed to call the API (the Vite dev server by default).
     cors_origins: str = "http://localhost:5173"

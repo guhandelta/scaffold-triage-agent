@@ -12,9 +12,12 @@ class FakeProvider:
     def __init__(self):
         self.calls = 0
 
-    async def decide(self, ticket):
+    async def decide(self, ticket, sources=()):
         self.calls += 1
-        return Decision(action=Action.reply, reasoning="ok", reply_text="Use Export.")
+        cited = [s.id for s in sources[:1]]
+        return Decision(
+            action=Action.reply, reasoning="ok", reply_text="Use Export.", citations=cited
+        )
 
 
 def _client(chain):
@@ -30,7 +33,7 @@ def test_reports_which_model_decided_and_failures_before_it():
     class Broken:
         name = "broken"
 
-        async def decide(self, ticket):
+        async def decide(self, ticket, sources=()):
             raise RuntimeError("429 rate limited")
 
     chain = FallbackChain([Broken(), FakeProvider()])

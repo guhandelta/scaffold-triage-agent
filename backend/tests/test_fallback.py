@@ -11,7 +11,7 @@ class Fake:
     def __init__(self, name, result=None, error=None):
         self.name, self._result, self._error, self.calls = name, result, error, 0
 
-    async def decide(self, ticket):
+    async def decide(self, ticket, sources=()):
         self.calls += 1
         if self._error:
             raise self._error

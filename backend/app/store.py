@@ -1,8 +1,11 @@
-"""Ticket store: every triaged ticket, its decision, and who owns it.
+"""Ticket store: every triaged ticket with its decision, reviewer changes and history.
 
 Two implementations share one interface:
 - `MemoryTicketStore` for tests and throwaway runs.
 - `SQLiteTicketStore` for the running app, so tickets survive a restart.
+
+The store only saves and loads whole records. The rules for changing a ticket live in
+`app.review`, so a database swap never touches them.
 """
 
 import sqlite3
@@ -11,7 +14,7 @@ from threading import Lock
 from typing import Protocol
 
 from app.config import get_settings
-from app.schemas import Action, TicketIn, TicketRecord, TriageResult
+from app.schemas import TicketRecord, TicketStatus
 
 
 class TicketNotFound(KeyError):
@@ -19,7 +22,7 @@ class TicketNotFound(KeyError):
 
 
 class TicketStore(Protocol):
-    def save(self, ticket: TicketIn, result: TriageResult) -> TicketRecord: ...
+    def save(self, record: TicketRecord) -> TicketRecord: ...
 
     def get(self, ticket_id: str) -> TicketRecord: ...
 
@@ -27,16 +30,13 @@ class TicketStore(Protocol):
 
     def escalations(self) -> list[TicketRecord]: ...
 
-    def assign(self, ticket_id: str, owner: str) -> TicketRecord: ...
-
 
 class MemoryTicketStore:
     def __init__(self) -> None:
         self._records: dict[str, TicketRecord] = {}
         self._lock = Lock()
 
-    def save(self, ticket: TicketIn, result: TriageResult) -> TicketRecord:
-        record = TicketRecord(ticket_id=result.ticket_id, ticket=ticket, result=result, owner=None)
+    def save(self, record: TicketRecord) -> TicketRecord:
         with self._lock:
             self._records[record.ticket_id] = record
         return record
@@ -53,26 +53,14 @@ class MemoryTicketStore:
             return list(reversed(self._records.values()))
 
     def escalations(self) -> list[TicketRecord]:
-        """Tickets a person must handle: escalated by a rule or by a model."""
-        with self._lock:
-            items = [
-                r for r in self._records.values() if r.result.decision.action == Action.escalate
-            ]
-        return sorted(items, key=lambda r: r.ticket_id)
-
-    def assign(self, ticket_id: str, owner: str) -> TicketRecord:
-        with self._lock:
-            if ticket_id not in self._records:
-                raise TicketNotFound(ticket_id)
-            updated = self._records[ticket_id].model_copy(update={"owner": owner})
-            self._records[ticket_id] = updated
-            return updated
+        """Open tickets a person must handle, newest first."""
+        return [r for r in self.list_all() if r.status == TicketStatus.escalated]
 
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS tickets (
     ticket_id TEXT PRIMARY KEY,
-    action    TEXT NOT NULL,
+    status    TEXT NOT NULL,
     owner     TEXT,
     record    TEXT NOT NULL
 )
@@ -80,7 +68,7 @@ CREATE TABLE IF NOT EXISTS tickets (
 
 
 class SQLiteTicketStore:
-    """Stores each ticket as JSON, with action and owner as columns for the queue query."""
+    """Stores each ticket as JSON, with status and owner as columns for queries."""
 
     def __init__(self, path: str) -> None:
         if path != ":memory:":
@@ -94,13 +82,14 @@ class SQLiteTicketStore:
         with self._lock:
             self._db.close()
 
-    def save(self, ticket: TicketIn, result: TriageResult) -> TicketRecord:
-        record = TicketRecord(ticket_id=result.ticket_id, ticket=ticket, result=result, owner=None)
+    def save(self, record: TicketRecord) -> TicketRecord:
+        # An upsert keeps the row id, so an updated ticket keeps its place in the list.
         with self._lock:
             self._db.execute(
-                "INSERT OR REPLACE INTO tickets (ticket_id, action, owner, record) "
-                "VALUES (?, ?, ?, ?)",
-                (record.ticket_id, result.decision.action.value, None, record.model_dump_json()),
+                "INSERT INTO tickets (ticket_id, status, owner, record) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(ticket_id) DO UPDATE SET "
+                "status = excluded.status, owner = excluded.owner, record = excluded.record",
+                (record.ticket_id, record.status.value, record.owner, record.model_dump_json()),
             )
             self._db.commit()
         return record
@@ -122,25 +111,10 @@ class SQLiteTicketStore:
     def escalations(self) -> list[TicketRecord]:
         with self._lock:
             rows = self._db.execute(
-                "SELECT record FROM tickets WHERE action = ? ORDER BY ticket_id",
-                (Action.escalate.value,),
+                "SELECT record FROM tickets WHERE status = ? ORDER BY rowid DESC",
+                (TicketStatus.escalated.value,),
             ).fetchall()
         return [TicketRecord.model_validate_json(r[0]) for r in rows]
-
-    def assign(self, ticket_id: str, owner: str) -> TicketRecord:
-        with self._lock:
-            row = self._db.execute(
-                "SELECT record FROM tickets WHERE ticket_id = ?", (ticket_id,)
-            ).fetchone()
-            if row is None:
-                raise TicketNotFound(ticket_id)
-            updated = TicketRecord.model_validate_json(row[0]).model_copy(update={"owner": owner})
-            self._db.execute(
-                "UPDATE tickets SET owner = ?, record = ? WHERE ticket_id = ?",
-                (owner, updated.model_dump_json(), ticket_id),
-            )
-            self._db.commit()
-        return updated
 
 
 _store: TicketStore | None = None

@@ -14,9 +14,14 @@ function RootLayout() {
     <div className="min-h-svh">
       <header className="border-b">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
-          <Link to="/" className="font-semibold">
-            Triage Agent
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link to="/" className="font-semibold">
+              Triage Agent
+            </Link>
+            <Link to="/escalations" className="text-sm text-muted-foreground hover:underline">
+              Escalations
+            </Link>
+          </div>
           <Health />
         </div>
       </header>

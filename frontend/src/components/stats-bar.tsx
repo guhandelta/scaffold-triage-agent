@@ -4,10 +4,10 @@ import type { Stats } from '@/lib/tickets'
 
 const ITEMS = [
   { key: 'total', label: 'Tickets', icon: Bot, tone: 'text-primary' },
-  { key: 'replied', label: 'Replied by agent', icon: Bot, tone: 'text-emerald-600' },
-  { key: 'escalated', label: 'Open escalations', icon: ShieldAlert, tone: 'text-amber-600' },
+  { key: 'replied', label: 'Replied by agent', icon: Bot, tone: 'text-emerald-600 dark:text-emerald-400' },
+  { key: 'escalated', label: 'Open escalations', icon: ShieldAlert, tone: 'text-amber-600 dark:text-amber-400' },
   { key: 'unassigned', label: 'Need an owner', icon: UserX, tone: 'text-destructive' },
-  { key: 'resolved', label: 'Resolved', icon: CheckCircle2, tone: 'text-sky-600' },
+  { key: 'resolved', label: 'Resolved', icon: CheckCircle2, tone: 'text-sky-600 dark:text-sky-400' },
 ] as const
 
 export function StatsBar({ stats }: { stats: Stats }) {

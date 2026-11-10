@@ -18,7 +18,7 @@ export function TriageFlow({ status }: { status: FlowStatus }) {
             {failed ? (
               <CircleAlert className="size-5 text-destructive" aria-hidden />
             ) : finished ? (
-              <CheckCircle2 className="size-5 text-emerald-600" aria-hidden />
+              <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" aria-hidden />
             ) : active ? (
               <LoaderCircle className="size-5 animate-spin text-primary" aria-hidden />
             ) : (

@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 
 import { healthOptions } from '@/client/@tanstack/react-query.gen'
 import { Badge } from '@/components/ui/badge'
+import { ThemeSwitcher } from '@/components/theme-switcher'
 import { ViewerSwitcher } from '@/components/viewer-switcher'
 
 const NAV = [
@@ -43,6 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </nav>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <ThemeSwitcher />
             <ViewerSwitcher />
             <Health />
           </div>

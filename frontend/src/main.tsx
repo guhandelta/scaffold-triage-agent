@@ -4,6 +4,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { client } from '@/client/client.gen'
+import { applyStoredChoice } from '@/lib/theme'
 import { installViewerHeaders } from '@/lib/user'
 import { routeTree } from './routeTree.gen'
 import './index.css'
@@ -11,6 +12,8 @@ import './index.css'
 // In dev, Vite proxies /api to FastAPI, so relative URLs work.
 client.setConfig({ baseUrl: import.meta.env.VITE_API_URL ?? '' })
 installViewerHeaders()
+// Apply the saved color theme before the first render, so the page never flashes the default.
+applyStoredChoice()
 
 const queryClient = new QueryClient()
 const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent' })

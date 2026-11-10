@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { health, type Options, triage } from '../sdk.gen';
-import type { HealthData, HealthResponse, TriageData, TriageError, TriageResponse } from '../types.gen';
+import { assign, escalations, getTicket, health, type Options, triage } from '../sdk.gen';
+import type { AssignData, AssignError, AssignResponse, EscalationsData, EscalationsResponse, GetTicketData, GetTicketError, GetTicketResponse, HealthData, HealthResponse, TriageData, TriageError, TriageResponse } from '../types.gen';
 
 /**
  * Triage
@@ -56,6 +56,61 @@ const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions
         params.query = options.query;
     }
     return [params];
+};
+
+export const escalationsQueryKey = (options?: Options<EscalationsData>) => createQueryKey('escalations', options);
+
+/**
+ * Escalations
+ *
+ * Every ticket a person must handle, with its owner if one is assigned.
+ */
+export const escalationsOptions = (options?: Options<EscalationsData>) => queryOptions<EscalationsResponse, DefaultError, EscalationsResponse, ReturnType<typeof escalationsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await escalations({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: escalationsQueryKey(options)
+});
+
+export const getTicketQueryKey = (options: Options<GetTicketData>) => createQueryKey('getTicket', options);
+
+/**
+ * Get Ticket
+ */
+export const getTicketOptions = (options: Options<GetTicketData>) => queryOptions<GetTicketResponse, GetTicketError, GetTicketResponse, ReturnType<typeof getTicketQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getTicket({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getTicketQueryKey(options)
+});
+
+/**
+ * Assign
+ */
+export const assignMutation = (options?: Partial<Options<AssignData>>): UseMutationOptions<AssignResponse, AssignError, Options<AssignData>> => {
+    const mutationOptions: UseMutationOptions<AssignResponse, AssignError, Options<AssignData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await assign({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
 };
 
 export const healthQueryKey = (options?: Options<HealthData>) => createQueryKey('health', options);

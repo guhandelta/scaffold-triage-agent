@@ -10,6 +10,18 @@ export type ClientOptions = {
 export type Action = 'reply' | 'escalate';
 
 /**
+ * AssignIn
+ */
+export type AssignIn = {
+    /**
+     * Owner
+     *
+     * Name of the person handling it
+     */
+    owner: string;
+};
+
+/**
  * Decision
  */
 export type Decision = {
@@ -68,6 +80,24 @@ export type TicketIn = {
      * Customer Email
      */
     customer_email?: string | null;
+};
+
+/**
+ * TicketRecord
+ *
+ * A triaged ticket with its decision and the person who owns it, if anyone.
+ */
+export type TicketRecord = {
+    /**
+     * Ticket Id
+     */
+    ticket_id: string;
+    ticket: TicketIn;
+    result: TriageResult;
+    /**
+     * Owner
+     */
+    owner?: string | null;
 };
 
 /**
@@ -153,6 +183,84 @@ export type TriageResponses = {
 };
 
 export type TriageResponse = TriageResponses[keyof TriageResponses];
+
+export type EscalationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/escalations';
+};
+
+export type EscalationsResponses = {
+    /**
+     * Response Escalations
+     *
+     * Successful Response
+     */
+    200: Array<TicketRecord>;
+};
+
+export type EscalationsResponse = EscalationsResponses[keyof EscalationsResponses];
+
+export type GetTicketData = {
+    body?: never;
+    path: {
+        /**
+         * Ticket Id
+         */
+        ticket_id: string;
+    };
+    query?: never;
+    url: '/api/tickets/{ticket_id}';
+};
+
+export type GetTicketErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetTicketError = GetTicketErrors[keyof GetTicketErrors];
+
+export type GetTicketResponses = {
+    /**
+     * Successful Response
+     */
+    200: TicketRecord;
+};
+
+export type GetTicketResponse = GetTicketResponses[keyof GetTicketResponses];
+
+export type AssignData = {
+    body: AssignIn;
+    path: {
+        /**
+         * Ticket Id
+         */
+        ticket_id: string;
+    };
+    query?: never;
+    url: '/api/tickets/{ticket_id}/assign';
+};
+
+export type AssignErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AssignError = AssignErrors[keyof AssignErrors];
+
+export type AssignResponses = {
+    /**
+     * Successful Response
+     */
+    200: TicketRecord;
+};
+
+export type AssignResponse = AssignResponses[keyof AssignResponses];
 
 export type HealthData = {
     body?: never;

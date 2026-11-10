@@ -1,6 +1,7 @@
 from enum import StrEnum
+from typing import Annotated
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 
 class Action(StrEnum):
@@ -41,3 +42,20 @@ class TriageResult(BaseModel):
 class Health(BaseModel):
     status: str
     agent: str
+
+
+class TicketRecord(BaseModel):
+    """A triaged ticket with its decision and the person who owns it, if anyone."""
+
+    ticket_id: str
+    ticket: TicketIn
+    result: TriageResult
+    owner: str | None = None
+
+
+class AssignIn(BaseModel):
+    owner: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=1, max_length=80),
+        Field(description="Name of the person handling it"),
+    ]

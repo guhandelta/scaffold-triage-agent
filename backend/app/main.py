@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
 from app.config import get_settings
-from app.routers import triage
+from app.routers import tickets, triage
 from app.schemas import Health
 
 
@@ -26,6 +26,7 @@ app.add_middleware(
 )
 
 app.include_router(triage.router)
+app.include_router(tickets.router)
 
 
 @app.get("/api/health", response_model=Health, tags=["meta"])

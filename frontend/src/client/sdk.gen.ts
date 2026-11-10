@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { HealthData, HealthResponses, TriageData, TriageErrors, TriageResponses } from './types.gen';
+import type { AssignData, AssignErrors, AssignResponses, EscalationsData, EscalationsResponses, GetTicketData, GetTicketErrors, GetTicketResponses, HealthData, HealthResponses, TriageData, TriageErrors, TriageResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -25,6 +25,30 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  */
 export const triage = <ThrowOnError extends boolean = false>(options: Options<TriageData, ThrowOnError>): RequestResult<TriageResponses, TriageErrors, ThrowOnError> => (options.client ?? client).post<TriageResponses, TriageErrors, ThrowOnError>({
     url: '/api/triage',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Escalations
+ *
+ * Every ticket a person must handle, with its owner if one is assigned.
+ */
+export const escalations = <ThrowOnError extends boolean = false>(options?: Options<EscalationsData, ThrowOnError>): RequestResult<EscalationsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<EscalationsResponses, unknown, ThrowOnError>({ url: '/api/escalations', ...options });
+
+/**
+ * Get Ticket
+ */
+export const getTicket = <ThrowOnError extends boolean = false>(options: Options<GetTicketData, ThrowOnError>): RequestResult<GetTicketResponses, GetTicketErrors, ThrowOnError> => (options.client ?? client).get<GetTicketResponses, GetTicketErrors, ThrowOnError>({ url: '/api/tickets/{ticket_id}', ...options });
+
+/**
+ * Assign
+ */
+export const assign = <ThrowOnError extends boolean = false>(options: Options<AssignData, ThrowOnError>): RequestResult<AssignResponses, AssignErrors, ThrowOnError> => (options.client ?? client).post<AssignResponses, AssignErrors, ThrowOnError>({
+    url: '/api/tickets/{ticket_id}/assign',
     ...options,
     headers: {
         'Content-Type': 'application/json',

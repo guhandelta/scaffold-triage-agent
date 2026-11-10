@@ -47,6 +47,126 @@
         }
       }
     },
+    "/api/escalations": {
+      "get": {
+        "tags": [
+          "tickets"
+        ],
+        "summary": "Escalations",
+        "description": "Every ticket a person must handle, with its owner if one is assigned.",
+        "operationId": "escalations",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TicketRecord"
+                  },
+                  "type": "array",
+                  "title": "Response Escalations"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tickets/{ticket_id}": {
+      "get": {
+        "tags": [
+          "tickets"
+        ],
+        "summary": "Get Ticket",
+        "operationId": "get_ticket",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticket Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tickets/{ticket_id}/assign": {
+      "post": {
+        "tags": [
+          "tickets"
+        ],
+        "summary": "Assign",
+        "operationId": "assign",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ticket Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -78,6 +198,22 @@
           "escalate"
         ],
         "title": "Action"
+      },
+      "AssignIn": {
+        "properties": {
+          "owner": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Owner",
+            "description": "Name of the person handling it"
+          }
+        },
+        "type": "object",
+        "required": [
+          "owner"
+        ],
+        "title": "AssignIn"
       },
       "Decision": {
         "properties": {
@@ -172,6 +308,39 @@
           "body"
         ],
         "title": "TicketIn"
+      },
+      "TicketRecord": {
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "title": "Ticket Id"
+          },
+          "ticket": {
+            "$ref": "#/components/schemas/TicketIn"
+          },
+          "result": {
+            "$ref": "#/components/schemas/TriageResult"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket_id",
+          "ticket",
+          "result"
+        ],
+        "title": "TicketRecord",
+        "description": "A triaged ticket with its decision and the person who owns it, if anyone."
       },
       "TriageResult": {
         "properties": {

@@ -32,6 +32,6 @@ export default defineConfig({
   server: {
     // Proxy API calls to FastAPI in dev so the client can use relative URLs.
     // SSE (R2) passes through this proxy unchanged.
-    proxy: { '/api': 'http://localhost:8000' },
+    proxy: { '/api': 'http://localhost:8001' },
   },
 })

@@ -3,12 +3,12 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.schemas import Action, Decision, TicketIn, TriageResult
-from app.store import TicketStore, get_store
+from app.store import MemoryTicketStore, get_store
 
 
 @pytest.fixture
 def client():
-    store = TicketStore()
+    store = MemoryTicketStore()
     app.dependency_overrides[get_store] = lambda: store
     yield TestClient(app)
     app.dependency_overrides.clear()
@@ -58,7 +58,7 @@ def test_blank_owner_is_rejected(client, owner):
 
 
 def test_store_keeps_model_escalations_too():
-    store = TicketStore()
+    store = MemoryTicketStore()
     result = TriageResult(
         decision=Decision(action=Action.escalate, reasoning="unsure", reply_text=None),
         route="agent",

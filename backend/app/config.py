@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     google_model: str = "gemini-3.1-pro-preview"
     provider_order: str = "claude,openai,google"
 
+    # Where tickets are stored. Relative paths are taken from the backend folder.
+    database_path: str = Field(default="data/tickets.db", validation_alias="DATABASE_PATH")
+
     # Comma-separated origins allowed to call the API (the Vite dev server by default).
     cors_origins: str = "http://localhost:5173"
 

@@ -9,10 +9,13 @@ import pytest
 from app.agent import get_chain
 from app.agent.providers import FallbackChain, RulesProvider
 from app.main import app
+from app.store import MemoryTicketStore, get_store
 
 
 @pytest.fixture(autouse=True)
 def offline_chain():
+    """Offline rules and a fresh in-memory store, so tests never touch the real database."""
     app.dependency_overrides[get_chain] = lambda: FallbackChain([RulesProvider()])
+    app.dependency_overrides[get_store] = lambda: MemoryTicketStore()
     yield
     app.dependency_overrides.clear()

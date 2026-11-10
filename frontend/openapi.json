@@ -47,6 +47,32 @@
         }
       }
     },
+    "/api/tickets": {
+      "get": {
+        "tags": [
+          "tickets"
+        ],
+        "summary": "List Tickets",
+        "description": "Every triaged ticket, newest first.",
+        "operationId": "list_tickets",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TicketRecord"
+                  },
+                  "type": "array",
+                  "title": "Response List Tickets"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/escalations": {
       "get": {
         "tags": [

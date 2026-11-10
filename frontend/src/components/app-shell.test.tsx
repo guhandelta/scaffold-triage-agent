@@ -28,10 +28,11 @@ describe('navigation in the shell', () => {
 })
 
 describe('API health badge', () => {
-  it('shows the agent in use when the API is up', async () => {
-    mockApi(async () => json({ status: 'ok', agent: 'rules' }))
+  it('shows the agent in use and the organization when the API is up', async () => {
+    mockApi(async () => json({ status: 'ok', organization: 'Acme', agent: 'rules', docs: 3 }))
     renderShell('/')
     expect(await screen.findByText(/API ok · rules/)).toBeTruthy()
+    expect(screen.getByText('Acme')).toBeTruthy()
   })
 
   it('warns when the API is offline', async () => {

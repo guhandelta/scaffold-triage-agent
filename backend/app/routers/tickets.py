@@ -4,7 +4,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app import review
 from app.auth import CurrentUser
-from app.deps import ChainDep, KbDep, StoreDep
+from app.deps import ChainDep, ConfigDep, KbDep, StoreDep
 from app.ingest import UploadError, parse_upload
 from app.schemas import AssignIn, NoteIn, OverrideIn, TicketRecord, UploadResult, User
 from app.service import run_triage
@@ -52,6 +52,7 @@ async def upload_tickets(
     chain: ChainDep,
     store: StoreDep,
     kb: KbDep,
+    config: ConfigDep,
 ) -> UploadResult:
     """Read tickets from a file and triage each one."""
     filename = file.filename or "upload"
@@ -59,7 +60,7 @@ async def upload_tickets(
         tickets = parse_upload(filename, await file.read())
     except UploadError as e:
         raise HTTPException(status_code=422, detail=str(e)) from None
-    records = [await run_triage(t, chain, store, kb) for t in tickets]
+    records = [await run_triage(t, chain, store, kb, config) for t in tickets]
     return UploadResult(filename=filename, records=records)
 
 

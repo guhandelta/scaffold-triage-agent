@@ -11,9 +11,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.agent.providers import ClaudeProvider, GoogleProvider, OpenAIProvider
+from app.agent.providers import ClaudeProvider, GoogleProvider, OpenAIProvider, system_prompt
 from app.config import get_settings
 from app.kb import get_kb
+from app.org_config import get_org_config
 from app.schemas import TicketIn
 
 TICKET = TicketIn(subject="How do I export my data to CSV?", body="Where is the export button?")
@@ -21,17 +22,27 @@ TICKET = TicketIn(subject="How do I export my data to CSV?", body="Where is the 
 
 async def main() -> int:
     s = get_settings()
+    config = get_org_config()
+    models, prompt = config.agent.models, system_prompt(config)
     secrets = [k for k in (s.anthropic_api_key, s.openai_api_key, s.google_api_key) if k]
     checks = [
         (
             "claude",
             s.anthropic_api_key,
-            lambda: ClaudeProvider(s.anthropic_api_key, s.claude_model),
+            lambda: ClaudeProvider(s.anthropic_api_key, s.claude_model or models.claude, prompt),
         ),
-        ("openai", s.openai_api_key, lambda: OpenAIProvider(s.openai_api_key, s.openai_model)),
-        ("google", s.google_api_key, lambda: GoogleProvider(s.google_api_key, s.google_model)),
+        (
+            "openai",
+            s.openai_api_key,
+            lambda: OpenAIProvider(s.openai_api_key, s.openai_model or models.openai, prompt),
+        ),
+        (
+            "google",
+            s.google_api_key,
+            lambda: GoogleProvider(s.google_api_key, s.google_model or models.google, prompt),
+        ),
     ]
-    sources = get_kb().search(f"{TICKET.subject}\n{TICKET.body}")
+    sources = get_kb().search(f"{TICKET.subject}\n{TICKET.body}", k=config.docs.top_k)
     print(f"docs: {len(sources)} section(s) retrieved")
     failed = 0
     for name, key, make in checks:

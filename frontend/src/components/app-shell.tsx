@@ -23,7 +23,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
                 <Bot className="size-5" aria-hidden />
               </span>
-              Triage Agent
+              <span className="grid leading-tight">
+                Triage Agent
+                <Organization />
+              </span>
             </Link>
             <nav aria-label="Main" className="flex gap-1">
               {NAV.map((item) => (
@@ -59,4 +62,10 @@ function Health() {
       <span className="size-2 rounded-full bg-emerald-500" aria-hidden /> API ok · {data.agent}
     </Badge>
   )
+}
+
+function Organization() {
+  const { data } = useQuery(healthOptions())
+  if (!data?.organization) return null
+  return <span className="text-xs font-normal text-muted-foreground">{data.organization}</span>
 }

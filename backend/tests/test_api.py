@@ -6,7 +6,12 @@ client = TestClient(app)
 
 
 def test_health_names_the_agent_and_counts_doc_sections():
-    assert client.get("/api/health").json() == {"status": "ok", "agent": "rules", "docs": 4}
+    assert client.get("/api/health").json() == {
+        "status": "ok",
+        "organization": "Test Co",
+        "agent": "rules",
+        "docs": 4,
+    }
 
 
 def test_replies_from_the_docs_and_cites_the_section():

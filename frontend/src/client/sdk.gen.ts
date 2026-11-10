@@ -126,6 +126,7 @@ export const resolve = <ThrowOnError extends boolean = false>(options: Options<R
 /**
  * Health
  *
- * Which agents are active, in fallback order, and how many doc sections they can read.
+ * Who the agent works for, which models are active in fallback order, and how many doc
+ * sections they can read.
  */
 export const health = <ThrowOnError extends boolean = false>(options?: Options<HealthData, ThrowOnError>): RequestResult<HealthResponses, unknown, ThrowOnError> => (options?.client ?? client).get<HealthResponses, unknown, ThrowOnError>({ url: '/api/health', ...options });

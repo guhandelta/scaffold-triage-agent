@@ -1,0 +1,31 @@
+# A second organization, to show that only this folder changes between deployments.
+# Try it: ORG_DIR=./examples/acme-hosting docker compose up --build
+
+organization:
+  name: Acme Hosting
+  product: managed web hosting
+
+docs:
+  path: docs
+  top_k: 3
+
+routing:
+  human_only: [refund, chargeback, hacked, malware, outage, is down, legal, abuse report]
+
+agent:
+  providers: [claude, google]
+  instructions: |
+    Address customers formally. Never ask for passwords or full card numbers.
+
+replies:
+  greeting: "Hello,"
+  closing: "Kind regards,\nAcme Hosting Support"
+
+access:
+  default_user: Support desk
+  default_role: agent
+  roles:
+    viewer: []
+    agent: [assign, note]
+    reviewer: [assign, note, confirm]
+    admin: [assign, note, confirm, override, resolve]

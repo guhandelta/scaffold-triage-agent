@@ -249,7 +249,8 @@ export const healthQueryKey = (options?: Options<HealthData>) => createQueryKey(
 /**
  * Health
  *
- * Which agents are active, in fallback order, and how many doc sections they can read.
+ * Who the agent works for, which models are active in fallback order, and how many doc
+ * sections they can read.
  */
 export const healthOptions = (options?: Options<HealthData>) => queryOptions<HealthResponse, DefaultError, HealthResponse, ReturnType<typeof healthQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {

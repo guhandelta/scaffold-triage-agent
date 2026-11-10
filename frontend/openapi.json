@@ -657,7 +657,7 @@
           "meta"
         ],
         "summary": "Health",
-        "description": "Which agents are active, in fallback order, and how many doc sections they can read.",
+        "description": "Who the agent works for, which models are active in fallback order, and how many doc\nsections they can read.",
         "operationId": "health",
         "responses": {
           "200": {
@@ -772,6 +772,11 @@
             "type": "string",
             "title": "Status"
           },
+          "organization": {
+            "type": "string",
+            "title": "Organization",
+            "description": "Name from triage.yaml"
+          },
           "agent": {
             "type": "string",
             "title": "Agent"
@@ -785,6 +790,7 @@
         "type": "object",
         "required": [
           "status",
+          "organization",
           "agent",
           "docs"
         ],

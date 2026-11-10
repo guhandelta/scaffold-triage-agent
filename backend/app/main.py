@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
 from app.config import get_settings
-from app.deps import ChainDep, KbDep
+from app.deps import ChainDep, ConfigDep, KbDep
 from app.routers import tickets, triage
 from app.schemas import Health
 
@@ -31,7 +31,10 @@ app.include_router(tickets.router)
 
 
 @app.get("/api/health", response_model=Health, tags=["meta"])
-async def health(chain: ChainDep, kb: KbDep) -> Health:
-    """Which agents are active, in fallback order, and how many doc sections they can read."""
+async def health(chain: ChainDep, kb: KbDep, config: ConfigDep) -> Health:
+    """Who the agent works for, which models are active in fallback order, and how many doc
+    sections they can read."""
     agent = " > ".join(p.name for p in chain.providers)
-    return Health(status="ok", agent=agent, docs=len(kb.sections))
+    return Health(
+        status="ok", organization=config.organization.name, agent=agent, docs=len(kb.sections)
+    )

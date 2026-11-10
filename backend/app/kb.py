@@ -16,6 +16,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from app.config import get_settings
+from app.org_config import get_org_config
 from app.schemas import Source
 
 HUMAN_MARKER = "> handled by a person"
@@ -161,4 +162,5 @@ class KnowledgeBase:
 
 @lru_cache
 def get_kb() -> KnowledgeBase:
-    return KnowledgeBase.load(get_settings().docs_path)
+    """The docs named in triage.yaml, or at DOCS_PATH when that is set."""
+    return KnowledgeBase.load(get_settings().docs_path or get_org_config().docs_dir)

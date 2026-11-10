@@ -1,0 +1,7 @@
+# The config tests run with. Docs are the small fixed set next to this file.
+organization:
+  name: Test Co
+docs:
+  path: docs
+routing:
+  human_only: [refund, charged twice, outage]

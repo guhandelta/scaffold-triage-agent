@@ -77,6 +77,12 @@ export type Health = {
      */
     status: string;
     /**
+     * Organization
+     *
+     * Name from triage.yaml
+     */
+    organization: string;
+    /**
      * Agent
      */
     agent: string;

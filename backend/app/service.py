@@ -5,6 +5,7 @@ from collections.abc import Sequence
 
 from app.agent.providers import FallbackChain
 from app.kb import KnowledgeBase
+from app.org_config import OrgConfig
 from app.routing import Route, route_ticket
 from app.schemas import (
     Action,
@@ -63,15 +64,20 @@ def _event(kind: str, detail: str, actor: str) -> HistoryEvent:
 
 
 async def run_triage(
-    ticket: TicketIn, chain: FallbackChain, store: TicketStore, kb: KnowledgeBase
+    ticket: TicketIn,
+    chain: FallbackChain,
+    store: TicketStore,
+    kb: KnowledgeBase,
+    config: OrgConfig | None = None,
 ) -> TicketRecord:
+    config = config or OrgConfig()
     ticket_id = uuid.uuid4().hex[:12]
     history = [_event("received", f"Subject: {ticket.subject}", "system")]
 
-    route = route_ticket(ticket)
+    route = route_ticket(ticket, config.routing.human_only)
     history.append(_event("routed", f"{route.route.value}: {route.reason}", "rules"))
 
-    sources = kb.search(f"{ticket.subject}\n{ticket.body}")
+    sources = kb.search(f"{ticket.subject}\n{ticket.body}", k=config.docs.top_k)
     titles = "; ".join(f"{s.title} / {s.heading}" for s in sources) or "nothing matched"
     history.append(_event("retrieved", f"Read {len(sources)} doc section(s): {titles}", "agent"))
 

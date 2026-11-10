@@ -1,5 +1,5 @@
-from app.config import get_settings
 from app.kb import KnowledgeBase, parse_doc, tokenize
+from app.org_config import DEFAULT_CONFIG, load
 
 
 def test_tokenize_drops_stopwords_and_folds_plurals():
@@ -48,7 +48,7 @@ def test_empty_knowledge_base_returns_nothing():
 
 
 def test_the_shipped_docs_load_and_answer_common_questions():
-    kb = KnowledgeBase.load(get_settings().docs_path)
+    kb = KnowledgeBase.load(load(DEFAULT_CONFIG).docs_dir)
     assert len(kb.sections) >= 20
     assert any(s.human_only for s in kb.sections)
     assert any(s.is_policy for s in kb.sections)

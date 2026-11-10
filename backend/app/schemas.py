@@ -117,6 +117,7 @@ class TicketRecord(BaseModel):
 
 class Health(BaseModel):
     status: str
+    organization: str = Field(description="Name from triage.yaml")
     agent: str
     docs: int = Field(description="Doc sections the agent can read")
 

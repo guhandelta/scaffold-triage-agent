@@ -13,4 +13,4 @@ Replace or extend them with your own organization's docs:
 - Docs under `policies/` describe how the agent should behave. They guide models but are never
   sent to customers as a reply.
 
-Point the API at another folder with `DOCS_PATH` in `backend/.env`.
+Point the agent at another folder with `docs.path` in `triage.yaml` (or `DOCS_PATH` in `backend/.env`).

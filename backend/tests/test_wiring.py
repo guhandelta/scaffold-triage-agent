@@ -65,7 +65,7 @@ def test_cors_origins_split_and_trim():
 def test_get_chain_is_built_once_from_settings(monkeypatch):
     get_chain.cache_clear()
     monkeypatch.setattr(
-        "app.agent.build_chain", lambda s: FallbackChain([RulesProvider()]), raising=True
+        "app.agent.build_chain", lambda s, c: FallbackChain([RulesProvider()]), raising=True
     )
     first = get_chain()
     assert isinstance(first, FallbackChain)

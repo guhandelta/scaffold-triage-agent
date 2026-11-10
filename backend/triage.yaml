@@ -1,0 +1,58 @@
+# How this triage agent behaves for one organization. Copy this file (and a docs folder) to
+# make the agent your own, then point TRIAGE_CONFIG at your copy. API keys never go here;
+# they stay in backend/.env or the environment.
+#
+# Check a file:  uv run python -m app.org_config path/to/triage.yaml
+
+organization:
+  name: Example Co
+  product: Example App          # optional, used in the agent's prompt
+
+docs:
+  path: data/docs               # relative to this file, or an absolute path
+  top_k: 4                      # doc sections the agent reads for each ticket
+
+routing:
+  # A ticket containing any of these phrases goes straight to a person, before any model sees it.
+  human_only:
+    - refund
+    - chargeback
+    - charged twice
+    - dispute
+    - lawyer
+    - legal
+    - fraud
+    - hacked
+    - breach
+    - data loss
+    - outage
+    - is down
+    - cancel my account
+
+agent:
+  # Tried in this order. One without an API key is skipped; a failure moves on to the next.
+  # With no keys at all, offline rules answer straight from the docs.
+  providers: [claude, openai, google]
+  models:
+    claude: claude-opus-5-5
+    openai: gpt-5
+    google: gemini-3.1-pro-preview
+  # Extra guidance for the agent, added to its prompt.
+  instructions: |
+    Keep replies short and friendly. Use numbered steps for instructions.
+  min_score: 2.5                # offline rules only: weaker doc matches go to a person
+
+replies:
+  greeting: "Hi,"
+  closing: "If this does not solve it, reply here and a person on our team will take a look."
+
+access:
+  # Who the app acts as when no sign-in tells it otherwise.
+  default_user: Reviewer
+  default_role: reviewer
+  # What each role may do: assign, note, confirm, override, resolve. A role left out can only view.
+  roles:
+    viewer: []
+    agent: [assign, note]
+    reviewer: [assign, note, confirm, override, resolve]
+    admin: [assign, note, confirm, override, resolve]

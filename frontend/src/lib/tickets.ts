@@ -1,38 +1,33 @@
-import type { TicketRecord } from '@/client'
+import type { TicketRecord, TicketStatus } from '@/client'
 
-export type DecisionFilter = 'all' | 'reply' | 'escalate'
+export type StatusFilter = 'all' | TicketStatus
 
 export type Stats = {
   total: number
   replied: number
   escalated: number
   unassigned: number
+  resolved: number
 }
 
-/** Counts shown in the stats bar. Escalated tickets without an owner still need one. */
+/** Counts shown in the stats bar. Open escalations without an owner still need one. */
 export function summarize(records: TicketRecord[]): Stats {
-  let replied = 0
-  let escalated = 0
-  let unassigned = 0
+  const stats: Stats = { total: records.length, replied: 0, escalated: 0, unassigned: 0, resolved: 0 }
   for (const record of records) {
-    if (record.result.decision.action === 'escalate') {
-      escalated += 1
-      if (!record.owner) unassigned += 1
-    } else {
-      replied += 1
-    }
+    stats[record.status] += 1
+    if (record.status === 'escalated' && !record.owner) stats.unassigned += 1
   }
-  return { total: records.length, replied, escalated, unassigned }
+  return stats
 }
 
-/** Filter by decision, then match the search text against subject, body, owner and email. */
+/** Filter by status, then match the search text against subject, body, owner and email. */
 export function filterTickets(
   records: TicketRecord[],
-  { decision, query }: { decision: DecisionFilter; query: string },
+  { status, query }: { status: StatusFilter; query: string },
 ): TicketRecord[] {
   const needle = query.trim().toLowerCase()
   return records.filter((record) => {
-    if (decision !== 'all' && record.result.decision.action !== decision) return false
+    if (status !== 'all' && record.status !== status) return false
     if (!needle) return true
     const haystack = [
       record.ticket.subject,
@@ -44,4 +39,13 @@ export function filterTickets(
       .toLowerCase()
     return haystack.includes(needle)
   })
+}
+
+/** The message to show for a failed API call. FastAPI errors carry a `detail`. */
+export function errorText(error: unknown, fallback = 'Something went wrong.'): string {
+  if (error && typeof error === 'object' && 'detail' in error) {
+    const detail = (error as { detail: unknown }).detail
+    if (typeof detail === 'string') return detail
+  }
+  return fallback
 }

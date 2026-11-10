@@ -1,16 +1,18 @@
+import { Link } from '@tanstack/react-router'
 import { Search } from 'lucide-react'
 import { useState } from 'react'
 
 import type { TicketRecord } from '@/client'
-import { DecisionBadge } from '@/components/decision-badge'
+import { StatusBadge } from '@/components/decision-badge'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { type DecisionFilter, filterTickets } from '@/lib/tickets'
+import { filterTickets, type StatusFilter } from '@/lib/tickets'
 
-const FILTERS: { value: DecisionFilter; label: string }[] = [
+const FILTERS: { value: StatusFilter; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'reply', label: 'Replied' },
-  { value: 'escalate', label: 'Escalated' },
+  { value: 'replied', label: 'Replied' },
+  { value: 'escalated', label: 'Escalated' },
+  { value: 'resolved', label: 'Resolved' },
 ]
 
 type Props = {
@@ -20,7 +22,7 @@ type Props = {
 }
 
 export function TicketList({ records, isPending, isError }: Props) {
-  const [decision, setDecision] = useState<DecisionFilter>('all')
+  const [status, setStatus] = useState<StatusFilter>('all')
   const [query, setQuery] = useState('')
 
   if (isPending) return <p className="text-sm text-muted-foreground">Loading tickets…</p>
@@ -33,20 +35,20 @@ export function TicketList({ records, isPending, isError }: Props) {
     )
   }
 
-  const visible = filterTickets(records, { decision, query })
+  const visible = filterTickets(records, { status, query })
 
   return (
     <div className="grid gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div role="group" aria-label="Filter by decision" className="flex gap-2">
+        <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2">
           {FILTERS.map((f) => (
             <button
               key={f.value}
               type="button"
-              aria-pressed={decision === f.value}
-              onClick={() => setDecision(f.value)}
+              aria-pressed={status === f.value}
+              onClick={() => setStatus(f.value)}
               className={`rounded-full border px-3 py-1 text-sm transition ${
-                decision === f.value ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                status === f.value ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
               }`}
             >
               {f.label}
@@ -70,21 +72,35 @@ export function TicketList({ records, isPending, isError }: Props) {
       ) : (
         <ul className="grid gap-3">
           {visible.map((record) => (
-            <li key={record.ticket_id} className="rounded-xl border bg-card p-4 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-medium">{record.ticket.subject}</p>
-                <DecisionBadge action={record.result.decision.action} />
-              </div>
-              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{record.ticket.body}</p>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                <Badge variant="outline">Decided by {record.result.provider}</Badge>
-                <Badge variant="outline">{record.owner ? `Owner: ${record.owner}` : 'No owner'}</Badge>
-                <span className="self-center font-mono">#{record.ticket_id}</span>
-              </div>
+            <li key={record.ticket_id}>
+              <Link
+                to="/tickets/$ticketId"
+                params={{ ticketId: record.ticket_id }}
+                className="block rounded-xl border bg-card p-4 shadow-sm transition hover:border-primary/40 hover:shadow-md"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">{record.ticket.subject}</p>
+                  <StatusBadge status={record.status} />
+                </div>
+                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{record.ticket.body}</p>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <Badge variant="outline">Decided by {record.result.provider}</Badge>
+                  <Badge variant="outline">{record.owner ? `Owner: ${record.owner}` : 'No owner'}</Badge>
+                  {citations(record) > 0 && (
+                    <Badge variant="outline">Cites {citations(record)} doc(s)</Badge>
+                  )}
+                  {record.override && <Badge variant="outline">Changed by a reviewer</Badge>}
+                  <span className="self-center font-mono">#{record.ticket_id}</span>
+                </div>
+              </Link>
             </li>
           ))}
         </ul>
       )}
     </div>
   )
+}
+
+function citations(record: TicketRecord): number {
+  return (record.result.decision.citations ?? []).length
 }

@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderLinked } from '@/test/render-linked'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -14,22 +15,22 @@ const base = {
 
 describe('EscalationsView', () => {
   it('shows a loading line while the queue loads', () => {
-    render(<EscalationsView {...base} items={undefined} isPending onAssign={vi.fn()} />)
+    renderLinked(<EscalationsView {...base} items={undefined} isPending onAssign={vi.fn()} />)
     expect(screen.getByText('Loading escalations…')).toBeTruthy()
   })
 
   it('shows an error line when the queue fails to load', () => {
-    render(<EscalationsView {...base} items={undefined} isError onAssign={vi.fn()} />)
+    renderLinked(<EscalationsView {...base} items={undefined} isError onAssign={vi.fn()} />)
     expect(screen.getByText('Could not load escalations.')).toBeTruthy()
   })
 
   it('shows an empty state when nothing needs a person', () => {
-    render(<EscalationsView {...base} items={[]} onAssign={vi.fn()} />)
+    renderLinked(<EscalationsView {...base} items={[]} onAssign={vi.fn()} />)
     expect(screen.getByText('Nothing needs a person right now.')).toBeTruthy()
   })
 
   it('treats a missing list as empty', () => {
-    render(<EscalationsView {...base} items={undefined} onAssign={vi.fn()} />)
+    renderLinked(<EscalationsView {...base} items={undefined} onAssign={vi.fn()} />)
     expect(screen.getByText('Nothing needs a person right now.')).toBeTruthy()
   })
 
@@ -40,7 +41,7 @@ describe('EscalationsView', () => {
       makeRecord({ ticket_id: 'one', ticket: { subject: 'First', body: 'a' } }),
       makeRecord({ ticket_id: 'two', ticket: { subject: 'Second', body: 'b' } }),
     ]
-    render(<EscalationsView {...base} items={items} onAssign={onAssign} />)
+    renderLinked(<EscalationsView {...base} items={items} onAssign={onAssign} />)
     expect(screen.getByText('First')).toBeTruthy()
     expect(screen.getByText('Second')).toBeTruthy()
 
@@ -51,7 +52,7 @@ describe('EscalationsView', () => {
   })
 
   it('warns when the last assignment failed', () => {
-    render(
+    renderLinked(
       <EscalationsView
         {...base}
         items={[makeRecord()]}
@@ -63,7 +64,7 @@ describe('EscalationsView', () => {
   })
 
   it('does not warn when assignments are fine', () => {
-    render(<EscalationsView {...base} items={[makeRecord()]} onAssign={vi.fn()} />)
+    renderLinked(<EscalationsView {...base} items={[makeRecord()]} onAssign={vi.fn()} />)
     expect(screen.queryByText('Could not assign that ticket.')).toBeNull()
   })
 })

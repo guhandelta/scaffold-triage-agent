@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { type FormEvent, useState } from 'react'
 
 import type { TicketRecord } from '@/client'
@@ -27,14 +28,20 @@ export function EscalationCard({ record, assigning, onAssign }: Props) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between gap-2">
-          <span>{ticket.subject}</span>
+          <Link
+            to="/tickets/$ticketId"
+            params={{ ticketId: record.ticket_id }}
+            className="hover:underline"
+          >
+            {ticket.subject}
+          </Link>
           {record.owner ? (
             <Badge variant="secondary">Owner: {record.owner}</Badge>
           ) : (
             <Badge variant="outline">Unassigned</Badge>
           )}
         </CardTitle>
-        <CardDescription>{result.decision.reasoning}</CardDescription>
+        <CardDescription>{record.decision.reasoning}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         <p className="whitespace-pre-wrap text-sm">{ticket.body}</p>

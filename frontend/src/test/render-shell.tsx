@@ -28,9 +28,10 @@ export function renderShell(path = '/') {
     history: createMemoryHistory({ initialEntries: [path] }),
   })
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
+  return { ...view, queryClient }
 }

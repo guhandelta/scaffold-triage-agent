@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 
 import { healthOptions } from '@/client/@tanstack/react-query.gen'
 import { Badge } from '@/components/ui/badge'
+import { ViewerSwitcher } from '@/components/viewer-switcher'
 
 const NAV = [
   { to: '/', label: 'Triage' },
@@ -16,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-svh bg-gradient-to-b from-muted/50 to-background">
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-2 font-semibold">
               <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
@@ -38,10 +39,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               ))}
             </nav>
           </div>
-          <Health />
+          <div className="flex flex-wrap items-center gap-3">
+            <ViewerSwitcher />
+            <Health />
+          </div>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
     </div>
   )
 }

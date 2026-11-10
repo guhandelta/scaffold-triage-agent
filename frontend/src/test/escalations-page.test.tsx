@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import { renderLinked } from '@/test/render-linked'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -29,7 +30,7 @@ function mockApi(handler: (request: Request) => Promise<Response>) {
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
+  return renderLinked(
     <QueryClientProvider client={queryClient}>
       <EscalationsPage />
     </QueryClientProvider>,

@@ -6,7 +6,8 @@ __pycache__/
 .ruff_cache/
 .env
 *.local
-data/
+backend/var/
+backend/data/*.db
 coverage/
 .coverage
 htmlcov/

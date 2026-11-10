@@ -22,6 +22,18 @@ export type AssignIn = {
 };
 
 /**
+ * Body_upload_tickets
+ */
+export type BodyUploadTickets = {
+    /**
+     * File
+     *
+     * .csv, .md, .txt or .docx
+     */
+    file: Blob | File;
+};
+
+/**
  * Decision
  */
 export type Decision = {
@@ -38,6 +50,12 @@ export type Decision = {
      * Reply to the customer, when replying
      */
     reply_text?: string | null;
+    /**
+     * Citations
+     *
+     * Ids of the sources used
+     */
+    citations?: Array<string>;
 };
 
 /**
@@ -62,6 +80,137 @@ export type Health = {
      * Agent
      */
     agent: string;
+    /**
+     * Docs
+     *
+     * Doc sections the agent can read
+     */
+    docs: number;
+};
+
+/**
+ * HistoryEvent
+ */
+export type HistoryEvent = {
+    /**
+     * Kind
+     *
+     * received, routed, retrieved, error, decided, grounding, ...
+     */
+    kind: string;
+    /**
+     * Detail
+     */
+    detail: string;
+    /**
+     * Actor
+     *
+     * agent, rules, or the reviewer's name
+     */
+    actor: string;
+    /**
+     * At
+     */
+    at?: string;
+};
+
+/**
+ * Note
+ */
+export type Note = {
+    /**
+     * Author
+     */
+    author: string;
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * At
+     */
+    at?: string;
+};
+
+/**
+ * NoteIn
+ */
+export type NoteIn = {
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * OverrideIn
+ */
+export type OverrideIn = {
+    action: Action;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Reply Text
+     */
+    reply_text?: string | null;
+};
+
+/**
+ * Permission
+ */
+export type Permission = 'assign' | 'note' | 'confirm' | 'override' | 'resolve';
+
+/**
+ * Role
+ */
+export type Role = 'viewer' | 'agent' | 'reviewer' | 'admin';
+
+/**
+ * Source
+ *
+ * One section of the support docs, as retrieved for a ticket.
+ */
+export type Source = {
+    /**
+     * Id
+     *
+     * Stable id: area/doc#section
+     */
+    id: string;
+    /**
+     * Area
+     */
+    area: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Heading
+     */
+    heading: string;
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Human Only
+     *
+     * The docs say a person must handle this
+     */
+    human_only: boolean;
+    /**
+     * Policy
+     *
+     * Guidance for the agent, never sent to customers
+     */
+    policy: boolean;
+    /**
+     * Score
+     */
+    score: number;
 };
 
 /**
@@ -85,7 +234,7 @@ export type TicketIn = {
 /**
  * TicketRecord
  *
- * A triaged ticket with its decision and the person who owns it, if anyone.
+ * A triaged ticket: the agent's decision, reviewer changes, and everything that happened.
  */
 export type TicketRecord = {
     /**
@@ -94,11 +243,37 @@ export type TicketRecord = {
     ticket_id: string;
     ticket: TicketIn;
     result: TriageResult;
+    status: TicketStatus;
     /**
      * Owner
      */
     owner?: string | null;
+    /**
+     * A reviewer's replacement decision
+     */
+    override?: Decision | null;
+    /**
+     * Confirmed By
+     */
+    confirmed_by?: string | null;
+    /**
+     * Notes
+     */
+    notes?: Array<Note>;
+    /**
+     * History
+     */
+    history?: Array<HistoryEvent>;
+    /**
+     * The decision in force: a reviewer's override, or else the agent's.
+     */
+    readonly decision: Decision;
 };
+
+/**
+ * TicketStatus
+ */
+export type TicketStatus = 'replied' | 'escalated' | 'resolved';
 
 /**
  * TriageResult
@@ -129,6 +304,41 @@ export type TriageResult = {
      * Ticket Id
      */
     ticket_id: string;
+    /**
+     * Sources
+     *
+     * Doc sections the agent read
+     */
+    sources?: Array<Source>;
+};
+
+/**
+ * UploadResult
+ */
+export type UploadResult = {
+    /**
+     * Filename
+     */
+    filename: string;
+    /**
+     * Records
+     */
+    records: Array<TicketRecord>;
+};
+
+/**
+ * User
+ */
+export type User = {
+    /**
+     * Name
+     */
+    name: string;
+    role: Role;
+    /**
+     * Permissions
+     */
+    permissions: Array<Permission>;
 };
 
 /**
@@ -159,6 +369,55 @@ export type ValidationError = {
     };
 };
 
+/**
+ * TicketRecord
+ *
+ * A triaged ticket: the agent's decision, reviewer changes, and everything that happened.
+ */
+export type TicketRecordWritable = {
+    /**
+     * Ticket Id
+     */
+    ticket_id: string;
+    ticket: TicketIn;
+    result: TriageResult;
+    status: TicketStatus;
+    /**
+     * Owner
+     */
+    owner?: string | null;
+    /**
+     * A reviewer's replacement decision
+     */
+    override?: Decision | null;
+    /**
+     * Confirmed By
+     */
+    confirmed_by?: string | null;
+    /**
+     * Notes
+     */
+    notes?: Array<Note>;
+    /**
+     * History
+     */
+    history?: Array<HistoryEvent>;
+};
+
+/**
+ * UploadResult
+ */
+export type UploadResultWritable = {
+    /**
+     * Filename
+     */
+    filename: string;
+    /**
+     * Records
+     */
+    records: Array<TicketRecordWritable>;
+};
+
 export type TriageData = {
     body: TicketIn;
     path?: never;
@@ -183,6 +442,41 @@ export type TriageResponses = {
 };
 
 export type TriageResponse = TriageResponses[keyof TriageResponses];
+
+export type MeData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-User-Name
+         */
+        'x-user-name'?: string | null;
+        /**
+         * X-User-Role
+         */
+        'x-user-role'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/me';
+};
+
+export type MeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MeError = MeErrors[keyof MeErrors];
+
+export type MeResponses = {
+    /**
+     * Successful Response
+     */
+    200: User;
+};
+
+export type MeResponse = MeResponses[keyof MeResponses];
 
 export type ListTicketsData = {
     body?: never;
@@ -220,6 +514,31 @@ export type EscalationsResponses = {
 
 export type EscalationsResponse = EscalationsResponses[keyof EscalationsResponses];
 
+export type UploadTicketsData = {
+    body: BodyUploadTickets;
+    path?: never;
+    query?: never;
+    url: '/api/tickets/upload';
+};
+
+export type UploadTicketsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UploadTicketsError = UploadTicketsErrors[keyof UploadTicketsErrors];
+
+export type UploadTicketsResponses = {
+    /**
+     * Successful Response
+     */
+    200: UploadResult;
+};
+
+export type UploadTicketsResponse = UploadTicketsResponses[keyof UploadTicketsResponses];
+
 export type GetTicketData = {
     body?: never;
     path: {
@@ -252,6 +571,16 @@ export type GetTicketResponse = GetTicketResponses[keyof GetTicketResponses];
 
 export type AssignData = {
     body: AssignIn;
+    headers?: {
+        /**
+         * X-User-Name
+         */
+        'x-user-name'?: string | null;
+        /**
+         * X-User-Role
+         */
+        'x-user-role'?: string | null;
+    };
     path: {
         /**
          * Ticket Id
@@ -279,6 +608,166 @@ export type AssignResponses = {
 };
 
 export type AssignResponse = AssignResponses[keyof AssignResponses];
+
+export type ConfirmData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-User-Name
+         */
+        'x-user-name'?: string | null;
+        /**
+         * X-User-Role
+         */
+        'x-user-role'?: string | null;
+    };
+    path: {
+        /**
+         * Ticket Id
+         */
+        ticket_id: string;
+    };
+    query?: never;
+    url: '/api/tickets/{ticket_id}/confirm';
+};
+
+export type ConfirmErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ConfirmError = ConfirmErrors[keyof ConfirmErrors];
+
+export type ConfirmResponses = {
+    /**
+     * Successful Response
+     */
+    200: TicketRecord;
+};
+
+export type ConfirmResponse = ConfirmResponses[keyof ConfirmResponses];
+
+export type OverrideData = {
+    body: OverrideIn;
+    headers?: {
+        /**
+         * X-User-Name
+         */
+        'x-user-name'?: string | null;
+        /**
+         * X-User-Role
+         */
+        'x-user-role'?: string | null;
+    };
+    path: {
+        /**
+         * Ticket Id
+         */
+        ticket_id: string;
+    };
+    query?: never;
+    url: '/api/tickets/{ticket_id}/override';
+};
+
+export type OverrideErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type OverrideError = OverrideErrors[keyof OverrideErrors];
+
+export type OverrideResponses = {
+    /**
+     * Successful Response
+     */
+    200: TicketRecord;
+};
+
+export type OverrideResponse = OverrideResponses[keyof OverrideResponses];
+
+export type AddNoteData = {
+    body: NoteIn;
+    headers?: {
+        /**
+         * X-User-Name
+         */
+        'x-user-name'?: string | null;
+        /**
+         * X-User-Role
+         */
+        'x-user-role'?: string | null;
+    };
+    path: {
+        /**
+         * Ticket Id
+         */
+        ticket_id: string;
+    };
+    query?: never;
+    url: '/api/tickets/{ticket_id}/notes';
+};
+
+export type AddNoteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AddNoteError = AddNoteErrors[keyof AddNoteErrors];
+
+export type AddNoteResponses = {
+    /**
+     * Successful Response
+     */
+    200: TicketRecord;
+};
+
+export type AddNoteResponse = AddNoteResponses[keyof AddNoteResponses];
+
+export type ResolveData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-User-Name
+         */
+        'x-user-name'?: string | null;
+        /**
+         * X-User-Role
+         */
+        'x-user-role'?: string | null;
+    };
+    path: {
+        /**
+         * Ticket Id
+         */
+        ticket_id: string;
+    };
+    query?: never;
+    url: '/api/tickets/{ticket_id}/resolve';
+};
+
+export type ResolveErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ResolveError = ResolveErrors[keyof ResolveErrors];
+
+export type ResolveResponses = {
+    /**
+     * Successful Response
+     */
+    200: TicketRecord;
+};
+
+export type ResolveResponse = ResolveResponses[keyof ResolveResponses];
 
 export type HealthData = {
     body?: never;

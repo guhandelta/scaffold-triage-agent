@@ -3,13 +3,13 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { assign, escalations, getTicket, health, listTickets, type Options, triage } from '../sdk.gen';
-import type { AssignData, AssignError, AssignResponse, EscalationsData, EscalationsResponse, GetTicketData, GetTicketError, GetTicketResponse, HealthData, HealthResponse, ListTicketsData, ListTicketsResponse, TriageData, TriageError, TriageResponse } from '../types.gen';
+import { addNote, assign, confirm, escalations, getTicket, health, listTickets, me, type Options, override, resolve, triage, uploadTickets } from '../sdk.gen';
+import type { AddNoteData, AddNoteError, AddNoteResponse, AssignData, AssignError, AssignResponse, ConfirmData, ConfirmError, ConfirmResponse, EscalationsData, EscalationsResponse, GetTicketData, GetTicketError, GetTicketResponse, HealthData, HealthResponse, ListTicketsData, ListTicketsResponse, MeData, MeError, MeResponse, OverrideData, OverrideError, OverrideResponse, ResolveData, ResolveError, ResolveResponse, TriageData, TriageError, TriageResponse, UploadTicketsData, UploadTicketsError, UploadTicketsResponse } from '../types.gen';
 
 /**
  * Triage
  *
- * Route the ticket, then let the models decide, trying each in turn.
+ * Route the ticket, read the docs, let the models decide, and save it with its history.
  */
 export const triageMutation = (options?: Partial<Options<TriageData>>): UseMutationOptions<TriageResponse, TriageError, Options<TriageData>> => {
     const mutationOptions: UseMutationOptions<TriageResponse, TriageError, Options<TriageData>> = {
@@ -58,6 +58,26 @@ const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions
     return [params];
 };
 
+export const meQueryKey = (options?: Options<MeData>) => createQueryKey('me', options);
+
+/**
+ * Me
+ *
+ * Who the API thinks is calling, with their role and permissions.
+ */
+export const meOptions = (options?: Options<MeData>) => queryOptions<MeResponse, MeError, MeResponse, ReturnType<typeof meQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await me({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: meQueryKey(options)
+});
+
 export const listTicketsQueryKey = (options?: Options<ListTicketsData>) => createQueryKey('listTickets', options);
 
 /**
@@ -83,7 +103,7 @@ export const escalationsQueryKey = (options?: Options<EscalationsData>) => creat
 /**
  * Escalations
  *
- * Every ticket a person must handle, with its owner if one is assigned.
+ * Open tickets a person must handle, newest first.
  */
 export const escalationsOptions = (options?: Options<EscalationsData>) => queryOptions<EscalationsResponse, DefaultError, EscalationsResponse, ReturnType<typeof escalationsQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {
@@ -97,6 +117,25 @@ export const escalationsOptions = (options?: Options<EscalationsData>) => queryO
     },
     queryKey: escalationsQueryKey(options)
 });
+
+/**
+ * Upload Tickets
+ *
+ * Read tickets from a file and triage each one.
+ */
+export const uploadTicketsMutation = (options?: Partial<Options<UploadTicketsData>>): UseMutationOptions<UploadTicketsResponse, UploadTicketsError, Options<UploadTicketsData>> => {
+    const mutationOptions: UseMutationOptions<UploadTicketsResponse, UploadTicketsError, Options<UploadTicketsData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await uploadTickets({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
 
 export const getTicketQueryKey = (options: Options<GetTicketData>) => createQueryKey('getTicket', options);
 
@@ -133,10 +172,84 @@ export const assignMutation = (options?: Partial<Options<AssignData>>): UseMutat
     return mutationOptions;
 };
 
+/**
+ * Confirm
+ *
+ * Agree with the decision in force.
+ */
+export const confirmMutation = (options?: Partial<Options<ConfirmData>>): UseMutationOptions<ConfirmResponse, ConfirmError, Options<ConfirmData>> => {
+    const mutationOptions: UseMutationOptions<ConfirmResponse, ConfirmError, Options<ConfirmData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await confirm({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Override
+ *
+ * Replace the agent's decision: send a reply instead, or hand it to a person.
+ */
+export const overrideMutation = (options?: Partial<Options<OverrideData>>): UseMutationOptions<OverrideResponse, OverrideError, Options<OverrideData>> => {
+    const mutationOptions: UseMutationOptions<OverrideResponse, OverrideError, Options<OverrideData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await override({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Add Note
+ */
+export const addNoteMutation = (options?: Partial<Options<AddNoteData>>): UseMutationOptions<AddNoteResponse, AddNoteError, Options<AddNoteData>> => {
+    const mutationOptions: UseMutationOptions<AddNoteResponse, AddNoteError, Options<AddNoteData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await addNote({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Resolve
+ */
+export const resolveMutation = (options?: Partial<Options<ResolveData>>): UseMutationOptions<ResolveResponse, ResolveError, Options<ResolveData>> => {
+    const mutationOptions: UseMutationOptions<ResolveResponse, ResolveError, Options<ResolveData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await resolve({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 export const healthQueryKey = (options?: Options<HealthData>) => createQueryKey('health', options);
 
 /**
  * Health
+ *
+ * Which agents are active, in fallback order, and how many doc sections they can read.
  */
 export const healthOptions = (options?: Options<HealthData>) => queryOptions<HealthResponse, DefaultError, HealthResponse, ReturnType<typeof healthQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {

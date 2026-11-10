@@ -53,3 +53,17 @@ def test_parse_accepts_fenced_json_and_rejects_junk():
         pass
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_reply_decision_must_carry_text():
+    from pydantic import ValidationError
+
+    from app.schemas import Decision
+
+    try:
+        Decision(action=Action.reply, reasoning="x", reply_text=None)
+    except ValidationError:
+        pass
+    else:
+        raise AssertionError("a reply with no text should be rejected")
+    assert Decision(action=Action.escalate, reasoning="x").reply_text is None

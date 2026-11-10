@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class Action(StrEnum):
@@ -18,6 +18,14 @@ class Decision(BaseModel):
     action: Action
     reasoning: str = Field(description="Why this action was chosen")
     reply_text: str | None = Field(default=None, description="Reply to the customer, when replying")
+
+    @model_validator(mode="after")
+    def reply_needs_text(self) -> "Decision":
+        # A "reply" with no text would send the customer nothing. Reject it so the chain
+        # moves on to the next model instead of returning an empty answer.
+        if self.action == Action.reply and not (self.reply_text or "").strip():
+            raise ValueError("a reply decision needs reply_text")
+        return self
 
 
 class TriageResult(BaseModel):

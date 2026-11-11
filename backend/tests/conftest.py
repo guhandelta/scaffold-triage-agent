@@ -14,6 +14,7 @@ import pytest
 
 from app.agent import get_chain
 from app.agent.providers import FallbackChain, RulesProvider
+from app.approvals import ApprovalStore, get_approval_store
 from app.kb import KnowledgeBase, get_kb
 from app.main import app
 from app.org_config import OrgConfig, get_org_config, load
@@ -46,9 +47,17 @@ def people_store() -> Iterator[PeopleStore]:
     store.close()
 
 
+@pytest.fixture
+def approval_store() -> Iterator[ApprovalStore]:
+    approvals = ApprovalStore(":memory:")
+    yield approvals
+    approvals.close()
+
+
 @pytest.fixture(autouse=True)
-def offline_app(fixture_kb, store, org_config, people_store):
+def offline_app(fixture_kb, store, org_config, people_store, approval_store):
     app.dependency_overrides[get_people_store] = lambda: people_store
+    app.dependency_overrides[get_approval_store] = lambda: approval_store
     app.dependency_overrides[get_chain] = lambda: FallbackChain([RulesProvider(org_config)])
     app.dependency_overrides[get_org_config] = lambda: org_config
     app.dependency_overrides[get_store] = lambda: store

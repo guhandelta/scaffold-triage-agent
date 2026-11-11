@@ -30,6 +30,8 @@ class TicketStore(Protocol):
 
     def escalations(self) -> list[TicketRecord]: ...
 
+    def delete(self, ticket_id: str) -> None: ...
+
 
 class MemoryTicketStore:
     def __init__(self) -> None:
@@ -55,6 +57,11 @@ class MemoryTicketStore:
     def escalations(self) -> list[TicketRecord]:
         """Open tickets a person must handle, newest first."""
         return [r for r in self.list_all() if r.status == TicketStatus.escalated]
+
+    def delete(self, ticket_id: str) -> None:
+        with self._lock:
+            if self._records.pop(ticket_id, None) is None:
+                raise TicketNotFound(ticket_id)
 
 
 _SCHEMA = """
@@ -115,6 +122,13 @@ class SQLiteTicketStore:
                 (TicketStatus.escalated.value,),
             ).fetchall()
         return [TicketRecord.model_validate_json(r[0]) for r in rows]
+
+    def delete(self, ticket_id: str) -> None:
+        with self._lock:
+            cursor = self._db.execute("DELETE FROM tickets WHERE ticket_id = ?", (ticket_id,))
+            self._db.commit()
+        if cursor.rowcount == 0:
+            raise TicketNotFound(ticket_id)
 
 
 _store: TicketStore | None = None

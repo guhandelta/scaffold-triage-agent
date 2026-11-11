@@ -26,13 +26,17 @@ def test_me_defaults_to_the_configured_reviewer():
     assert me == {
         "name": "Reviewer",
         "role": "reviewer",
-        "permissions": ["assign", "confirm", "note", "override", "resolve"],
+        "permissions": ["assign", "confirm", "create", "move", "note", "override", "resolve"],
     }
 
 
 def test_me_reads_the_headers():
     me = client.get("/api/me", headers=_as("  Agent ", "  Sam  ")).json()
-    assert me == {"name": "Sam", "role": "agent", "permissions": ["assign", "note"]}
+    assert me == {
+        "name": "Sam",
+        "role": "agent",
+        "permissions": ["assign", "create", "delete", "move", "note", "override"],
+    }
 
 
 def test_unknown_role_is_rejected():
@@ -184,7 +188,10 @@ def test_roles_decide_who_may_act(role, allowed):
     for action, body in bodies.items():
         ticket_id = _triage(REFUND)
         r = client.post(f"/api/tickets/{ticket_id}/{action}", json=body, headers=_as(role))
-        if action in allowed:
+        if role == "agent" and action == "override":
+            # Agents may ask for an override, but it waits for an admin.
+            assert r.status_code == 202, (role, action)
+        elif action in allowed:
             assert r.status_code == 200, (role, action)
         else:
             assert r.status_code == 403, (role, action)

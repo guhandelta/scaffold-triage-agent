@@ -26,6 +26,8 @@ access:
   default_role: agent
   roles:
     viewer: []
-    agent: [assign, note]
-    reviewer: [assign, note, confirm]
-    admin: [assign, note, confirm, override, resolve, manage_people]
+    agent: [assign, note, create, override, move, delete]
+    reviewer: [assign, note, confirm, create, move]
+    admin: [assign, note, confirm, create, move, delete, override, resolve, approve, manage_people]
+  approval:
+    agent: [create, override, move, delete]

@@ -50,9 +50,13 @@ access:
   # Who the app acts as when no sign-in tells it otherwise.
   default_user: Reviewer
   default_role: reviewer
-  # What each role may do: assign, note, confirm, override, resolve. A role left out can only view.
+  # What each role may do: assign, note, confirm, override, resolve, create, move, delete,
+  # approve, manage_people. A role left out can only view.
   roles:
     viewer: []
-    agent: [assign, note]
-    reviewer: [assign, note, confirm, override, resolve]
-    admin: [assign, note, confirm, override, resolve, manage_people]
+    agent: [assign, note, create, override, move, delete]
+    reviewer: [assign, note, confirm, override, resolve, create, move]
+    admin: [assign, note, confirm, override, resolve, create, move, delete, approve, manage_people]
+  # Actions a role may request, but that wait for an admin's approval before they happen.
+  approval:
+    agent: [create, override, move, delete]

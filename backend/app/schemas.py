@@ -43,6 +43,10 @@ class Permission(StrEnum):
     override = "override"
     resolve = "resolve"
     manage_people = "manage_people"  # add or move people, change roles, deactivate
+    create = "create"  # make new tickets, by typing them in or uploading a file
+    move = "move"  # move a ticket to another team
+    delete = "delete"  # remove a ticket for good
+    approve = "approve"  # decide requests that need an admin's sign-off
 
 
 class TicketIn(BaseModel):
@@ -203,6 +207,32 @@ class AssignIn(BaseModel):
 
 class TeamIn(BaseModel):
     team: TeamName
+
+
+class ApprovalStatus(StrEnum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
+class ApprovalRequest(BaseModel):
+    """A change someone may not make yet. An admin approves it, and only then does it happen."""
+
+    id: str
+    action: Permission
+    ticket_id: str | None = Field(default=None, description="The ticket it changes, if any")
+    payload: dict = Field(default_factory=dict, description="What to do once approved")
+    requested_by: str
+    requested_role: Role
+    status: ApprovalStatus = ApprovalStatus.pending
+    decided_by: str | None = None
+    decision_note: str | None = None
+    created_at: datetime = Field(default_factory=now)
+    decided_at: datetime | None = None
+
+
+class ApprovalDecisionIn(BaseModel):
+    note: str = Field(default="", max_length=1000, description="Required when rejecting")
 
 
 class NoteIn(BaseModel):

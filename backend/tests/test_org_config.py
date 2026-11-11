@@ -52,7 +52,14 @@ def test_the_shipped_config_loads():
     assert config.organization.name == "Example Co"
     assert config.docs_dir == DEFAULT_CONFIG.parent / "data" / "docs"
     assert config.agent.providers == ["claude", "openai", "google"]
-    assert config.access.permissions(Role.agent) == [Permission.assign, Permission.note]
+    assert config.access.permissions(Role.agent) == [
+        Permission.assign,
+        Permission.create,
+        Permission.delete,
+        Permission.move,
+        Permission.note,
+        Permission.override,
+    ]
 
 
 def test_an_empty_file_uses_safe_defaults(tmp_path):
@@ -83,7 +90,7 @@ def test_a_role_left_out_can_only_view(tmp_path):
     [
         ("organisation: {name: x}", "organisation: Extra inputs are not permitted"),
         ("agent: {providers: [claude, mistral]}", "agent.providers.1"),
-        ("access: {roles: {agent: [delete]}}", "access.roles.agent.0"),
+        ("access: {roles: {agent: [fly]}}", "access.roles.agent.0"),
         ("docs: {top_k: 0}", "docs.top_k"),
         ("organization: {name: '  '}", "organization.name"),
         ("- just\n- a list", "must be a mapping"),
@@ -237,13 +244,14 @@ def _with_config(text: str, tmp_path: Path) -> OrgConfig:
 
 def test_roles_and_default_user_come_from_the_config(tmp_path):
     _with_config(
-        "access:\n  default_user: Desk\n  default_role: agent\n  roles: {agent: [note]}\n",
+        "access:\n  default_user: Desk\n  default_role: agent\n"
+        "  roles: {agent: [note, create]}\n  approval: {}\n",
         tmp_path,
     )
     assert client.get("/api/me").json() == {
         "name": "Desk",
         "role": "agent",
-        "permissions": ["note"],
+        "permissions": ["create", "note"],
     }
     ticket_id = client.post("/api/triage", json={"subject": "Hi", "body": "hello"}).json()[
         "ticket_id"

@@ -6,6 +6,7 @@ from fastapi import Depends
 
 from app.agent import get_chain
 from app.agent.providers import FallbackChain
+from app.approvals import ApprovalStore, get_approval_store
 from app.kb import KnowledgeBase, get_kb
 from app.org_config import OrgConfig, get_org_config
 from app.people import PeopleStore, get_people_store
@@ -16,3 +17,4 @@ StoreDep = Annotated[TicketStore, Depends(get_store)]
 KbDep = Annotated[KnowledgeBase, Depends(get_kb)]
 ConfigDep = Annotated[OrgConfig, Depends(get_org_config)]
 PeopleDep = Annotated[PeopleStore, Depends(get_people_store)]
+ApprovalsDep = Annotated[ApprovalStore, Depends(get_approval_store)]

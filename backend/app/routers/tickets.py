@@ -3,11 +3,21 @@ from typing import Annotated
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app import review
-from app.auth import CurrentUser
-from app.deps import ChainDep, ConfigDep, KbDep, PeopleDep, StoreDep
+from app.approvals import queue
+from app.auth import CurrentUser, require
+from app.deps import ApprovalsDep, ChainDep, ConfigDep, KbDep, PeopleDep, StoreDep
 from app.ingest import UploadError, parse_upload
 from app.people import PeopleStore
-from app.schemas import AssignIn, NoteIn, OverrideIn, TeamIn, TicketRecord, UploadResult, User
+from app.schemas import (
+    AssignIn,
+    NoteIn,
+    OverrideIn,
+    Permission,
+    TeamIn,
+    TicketRecord,
+    UploadResult,
+    User,
+)
 from app.scope import can_see
 from app.service import run_triage
 from app.store import TicketNotFound, TicketStore
@@ -69,13 +79,19 @@ async def upload_tickets(
     store: StoreDep,
     kb: KbDep,
     config: ConfigDep,
-) -> UploadResult:
-    """Read tickets from a file and triage each one."""
+    approvals: ApprovalsDep,
+    user: CurrentUser,
+):
+    """Read tickets from a file and triage each one. Waits for an admin if the role needs it."""
+    require(user, Permission.create)
     filename = file.filename or "upload"
     try:
         tickets = parse_upload(filename, await file.read())
     except UploadError as e:
         raise HTTPException(status_code=422, detail=str(e)) from None
+    if config.access.needs_approval(user.role, Permission.create):
+        payload = {"filename": filename, "tickets": [t.model_dump() for t in tickets]}
+        return queue(approvals, Permission.create, user, payload)
     records = [await run_triage(t, chain, store, kb, config) for t in tickets]
     return UploadResult(filename=filename, records=records)
 
@@ -96,10 +112,38 @@ async def assign(
 
 @router.post("/tickets/{ticket_id}/team", response_model=TicketRecord)
 async def move_team(
-    ticket_id: str, body: TeamIn, store: StoreDep, people: PeopleDep, user: CurrentUser
-) -> TicketRecord:
+    ticket_id: str,
+    body: TeamIn,
+    store: StoreDep,
+    people: PeopleDep,
+    user: CurrentUser,
+    config: ConfigDep,
+    approvals: ApprovalsDep,
+):
     """Move a ticket to another team. Its new team then decides who can see it."""
+    require(user, Permission.move)
+    _visible(_load(store, ticket_id), people, user)
+    if config.access.needs_approval(user.role, Permission.move):
+        return queue(approvals, Permission.move, user, {"team": body.team}, ticket_id)
     return _apply(store, ticket_id, lambda r: review.set_team(r, body.team, user), people, user)
+
+
+@router.delete("/tickets/{ticket_id}", status_code=204, responses={202: {"description": "Waiting"}})
+async def delete_ticket(
+    ticket_id: str,
+    store: StoreDep,
+    people: PeopleDep,
+    user: CurrentUser,
+    config: ConfigDep,
+    approvals: ApprovalsDep,
+):
+    """Remove a ticket for good. Waits for an admin if the role needs it."""
+    require(user, Permission.delete)
+    _visible(_load(store, ticket_id), people, user)
+    if config.access.needs_approval(user.role, Permission.delete):
+        return queue(approvals, Permission.delete, user, {}, ticket_id)
+    store.delete(ticket_id)
+    return None
 
 
 @router.post("/tickets/{ticket_id}/confirm", response_model=TicketRecord)
@@ -112,9 +156,20 @@ async def confirm(
 
 @router.post("/tickets/{ticket_id}/override", response_model=TicketRecord)
 async def override(
-    ticket_id: str, body: OverrideIn, store: StoreDep, people: PeopleDep, user: CurrentUser
-) -> TicketRecord:
+    ticket_id: str,
+    body: OverrideIn,
+    store: StoreDep,
+    people: PeopleDep,
+    user: CurrentUser,
+    config: ConfigDep,
+    approvals: ApprovalsDep,
+):
     """Replace the agent's decision: send a reply instead, or hand it to a person."""
+    require(user, Permission.override)
+    _visible(_load(store, ticket_id), people, user)
+    if config.access.needs_approval(user.role, Permission.override):
+        payload = body.model_dump(mode="json")
+        return queue(approvals, Permission.override, user, payload, ticket_id)
     return _apply(store, ticket_id, lambda r: review.override(r, body, user), people, user)
 
 

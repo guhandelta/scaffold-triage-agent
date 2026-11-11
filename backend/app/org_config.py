@@ -101,15 +101,31 @@ class Replies(_Strict):
 def _default_roles() -> dict[Role, list[Permission]]:
     return {
         Role.viewer: [],
-        Role.agent: [Permission.assign, Permission.note],
+        Role.agent: [
+            Permission.assign,
+            Permission.note,
+            Permission.create,
+            Permission.override,
+            Permission.move,
+            Permission.delete,
+        ],
         Role.reviewer: [
             Permission.assign,
             Permission.note,
             Permission.confirm,
             Permission.override,
             Permission.resolve,
+            Permission.create,
+            Permission.move,
         ],
         Role.admin: list(Permission),
+    }
+
+
+def _default_approval() -> dict[Role, list[Permission]]:
+    # Agents may ask for these, but an admin signs off before they happen.
+    return {
+        Role.agent: [Permission.create, Permission.override, Permission.move, Permission.delete]
     }
 
 
@@ -117,10 +133,17 @@ class Access(_Strict):
     default_user: Text = "Reviewer"
     default_role: Role = Role.reviewer
     roles: dict[Role, list[Permission]] = Field(default_factory=_default_roles)
+    approval: dict[Role, list[Permission]] = Field(
+        default_factory=_default_approval,
+        description="Actions a role may request but only an admin can let happen.",
+    )
 
     def permissions(self, role: Role) -> list[Permission]:
         """A role left out of the file may do nothing."""
         return sorted(set(self.roles.get(role, [])))
+
+    def needs_approval(self, role: Role, permission: Permission) -> bool:
+        return permission in self.approval.get(role, [])
 
 
 class OrgConfig(_Strict):

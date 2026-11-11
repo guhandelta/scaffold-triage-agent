@@ -94,7 +94,13 @@ def _default_roles() -> dict[Role, list[Permission]]:
     return {
         Role.viewer: [],
         Role.agent: [Permission.assign, Permission.note],
-        Role.reviewer: list(Permission),
+        Role.reviewer: [
+            Permission.assign,
+            Permission.note,
+            Permission.confirm,
+            Permission.override,
+            Permission.resolve,
+        ],
         Role.admin: list(Permission),
     }
 

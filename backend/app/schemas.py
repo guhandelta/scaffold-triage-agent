@@ -2,7 +2,14 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import BaseModel, Field, StringConstraints, computed_field, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    Field,
+    StringConstraints,
+    computed_field,
+    model_validator,
+)
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
 
@@ -35,6 +42,7 @@ class Permission(StrEnum):
     confirm = "confirm"
     override = "override"
     resolve = "resolve"
+    manage_people = "manage_people"  # add or move people, change roles, deactivate
 
 
 class TicketIn(BaseModel):
@@ -113,6 +121,66 @@ class TicketRecord(BaseModel):
     def decision(self) -> Decision:
         """The decision in force: a reviewer's override, or else the agent's."""
         return self.override or self.result.decision
+
+
+def _clean(value: object) -> object:
+    """Trim and lower-case before the pattern check, so ' Billing ' is accepted as 'billing'."""
+    return value.strip().lower() if isinstance(value, str) else value
+
+
+TeamName = Annotated[
+    str,
+    BeforeValidator(_clean),
+    StringConstraints(pattern=r"^[a-z0-9][a-z0-9-]{0,39}$"),
+]
+Email = Annotated[
+    str,
+    BeforeValidator(_clean),
+    StringConstraints(max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$"),
+]
+Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
+class Membership(BaseModel):
+    team: str
+    role: Role
+
+
+class Person(BaseModel):
+    id: str
+    name: str
+    email: str | None = None
+    active: bool
+    memberships: list[Membership] = Field(default_factory=list)
+
+
+class PersonEvent(BaseModel):
+    """One change to a person: joined a team, role changed, deactivated, and so on."""
+
+    kind: str
+    detail: str
+    actor: str
+    at: datetime = Field(default_factory=now)
+
+
+class PersonIn(BaseModel):
+    name: Name
+    email: Email | None = None
+
+
+class MembershipIn(BaseModel):
+    team: TeamName
+    role: Role
+
+
+class RoleChangeIn(BaseModel):
+    role: Role
+    reason: Reason
+
+
+class StatusIn(BaseModel):
+    active: bool
+    reason: Reason
 
 
 class Health(BaseModel):

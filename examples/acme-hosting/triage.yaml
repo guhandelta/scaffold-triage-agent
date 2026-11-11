@@ -28,4 +28,4 @@ access:
     viewer: []
     agent: [assign, note]
     reviewer: [assign, note, confirm]
-    admin: [assign, note, confirm, override, resolve]
+    admin: [assign, note, confirm, override, resolve, manage_people]

@@ -5,3 +5,6 @@ docs:
   path: docs
 routing:
   human_only: [refund, charged twice, outage]
+  teams:
+    billing: [invoice, charge]
+    support: [login]

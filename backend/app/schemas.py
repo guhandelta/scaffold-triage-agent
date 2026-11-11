@@ -111,6 +111,7 @@ class TicketRecord(BaseModel):
     result: TriageResult
     status: TicketStatus
     owner: str | None = None
+    team: str | None = Field(default=None, description="Team that may see it; None is everyone")
     override: Decision | None = Field(default=None, description="A reviewer's replacement decision")
     confirmed_by: str | None = None
     notes: list[Note] = Field(default_factory=list)
@@ -198,6 +199,10 @@ class User(BaseModel):
 
 class AssignIn(BaseModel):
     owner: Annotated[Name, Field(description="Name of the person handling it")]
+
+
+class TeamIn(BaseModel):
+    team: TeamName
 
 
 class NoteIn(BaseModel):

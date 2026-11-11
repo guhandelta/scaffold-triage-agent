@@ -4,9 +4,11 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app import review
 from app.auth import CurrentUser
-from app.deps import ChainDep, ConfigDep, KbDep, StoreDep
+from app.deps import ChainDep, ConfigDep, KbDep, PeopleDep, StoreDep
 from app.ingest import UploadError, parse_upload
-from app.schemas import AssignIn, NoteIn, OverrideIn, TicketRecord, UploadResult, User
+from app.people import PeopleStore
+from app.schemas import AssignIn, NoteIn, OverrideIn, TeamIn, TicketRecord, UploadResult, User
+from app.scope import can_see
 from app.service import run_triage
 from app.store import TicketNotFound, TicketStore
 
@@ -20,8 +22,17 @@ def _load(store: TicketStore, ticket_id: str) -> TicketRecord:
         raise HTTPException(status_code=404, detail="ticket not found") from None
 
 
-def _apply(store: TicketStore, ticket_id: str, change) -> TicketRecord:
-    record = _load(store, ticket_id)
+def _visible(record: TicketRecord, people: PeopleStore, user: User) -> TicketRecord:
+    # Someone outside the team gets the same 404 as a missing ticket, so it isn't revealed.
+    if not can_see(user, record, people.teams_of(user.name)):
+        raise HTTPException(status_code=404, detail="ticket not found")
+    return record
+
+
+def _apply(
+    store: TicketStore, ticket_id: str, change, people: PeopleStore, user: User
+) -> TicketRecord:
+    record = _visible(_load(store, ticket_id), people, user)
     try:
         return store.save(change(record))
     except review.ReviewError as e:
@@ -34,16 +45,21 @@ async def me(user: CurrentUser) -> User:
     return user
 
 
+def _seen_by(records: list[TicketRecord], people: PeopleStore, user: User) -> list[TicketRecord]:
+    teams = people.teams_of(user.name)
+    return [r for r in records if can_see(user, r, teams)]
+
+
 @router.get("/tickets", response_model=list[TicketRecord])
-async def list_tickets(store: StoreDep) -> list[TicketRecord]:
-    """Every triaged ticket, newest first."""
-    return store.list_all()
+async def list_tickets(store: StoreDep, people: PeopleDep, user: CurrentUser) -> list[TicketRecord]:
+    """Every triaged ticket the caller may see, newest first."""
+    return _seen_by(store.list_all(), people, user)
 
 
 @router.get("/escalations", response_model=list[TicketRecord])
-async def escalations(store: StoreDep) -> list[TicketRecord]:
-    """Open tickets a person must handle, newest first."""
-    return store.escalations()
+async def escalations(store: StoreDep, people: PeopleDep, user: CurrentUser) -> list[TicketRecord]:
+    """Open tickets a person must handle that the caller may see, newest first."""
+    return _seen_by(store.escalations(), people, user)
 
 
 @router.post("/tickets/upload", response_model=UploadResult)
@@ -65,38 +81,52 @@ async def upload_tickets(
 
 
 @router.get("/tickets/{ticket_id}", response_model=TicketRecord)
-async def get_ticket(ticket_id: str, store: StoreDep) -> TicketRecord:
-    return _load(store, ticket_id)
+async def get_ticket(
+    ticket_id: str, store: StoreDep, people: PeopleDep, user: CurrentUser
+) -> TicketRecord:
+    return _visible(_load(store, ticket_id), people, user)
 
 
 @router.post("/tickets/{ticket_id}/assign", response_model=TicketRecord)
 async def assign(
-    ticket_id: str, body: AssignIn, store: StoreDep, user: CurrentUser
+    ticket_id: str, body: AssignIn, store: StoreDep, people: PeopleDep, user: CurrentUser
 ) -> TicketRecord:
-    return _apply(store, ticket_id, lambda r: review.assign(r, body.owner, user))
+    return _apply(store, ticket_id, lambda r: review.assign(r, body.owner, user), people, user)
+
+
+@router.post("/tickets/{ticket_id}/team", response_model=TicketRecord)
+async def move_team(
+    ticket_id: str, body: TeamIn, store: StoreDep, people: PeopleDep, user: CurrentUser
+) -> TicketRecord:
+    """Move a ticket to another team. Its new team then decides who can see it."""
+    return _apply(store, ticket_id, lambda r: review.set_team(r, body.team, user), people, user)
 
 
 @router.post("/tickets/{ticket_id}/confirm", response_model=TicketRecord)
-async def confirm(ticket_id: str, store: StoreDep, user: CurrentUser) -> TicketRecord:
+async def confirm(
+    ticket_id: str, store: StoreDep, people: PeopleDep, user: CurrentUser
+) -> TicketRecord:
     """Agree with the decision in force."""
-    return _apply(store, ticket_id, lambda r: review.confirm(r, user))
+    return _apply(store, ticket_id, lambda r: review.confirm(r, user), people, user)
 
 
 @router.post("/tickets/{ticket_id}/override", response_model=TicketRecord)
 async def override(
-    ticket_id: str, body: OverrideIn, store: StoreDep, user: CurrentUser
+    ticket_id: str, body: OverrideIn, store: StoreDep, people: PeopleDep, user: CurrentUser
 ) -> TicketRecord:
     """Replace the agent's decision: send a reply instead, or hand it to a person."""
-    return _apply(store, ticket_id, lambda r: review.override(r, body, user))
+    return _apply(store, ticket_id, lambda r: review.override(r, body, user), people, user)
 
 
 @router.post("/tickets/{ticket_id}/notes", response_model=TicketRecord)
 async def add_note(
-    ticket_id: str, body: NoteIn, store: StoreDep, user: CurrentUser
+    ticket_id: str, body: NoteIn, store: StoreDep, people: PeopleDep, user: CurrentUser
 ) -> TicketRecord:
-    return _apply(store, ticket_id, lambda r: review.add_note(r, body.text, user))
+    return _apply(store, ticket_id, lambda r: review.add_note(r, body.text, user), people, user)
 
 
 @router.post("/tickets/{ticket_id}/resolve", response_model=TicketRecord)
-async def resolve(ticket_id: str, store: StoreDep, user: CurrentUser) -> TicketRecord:
-    return _apply(store, ticket_id, lambda r: review.resolve(r, user))
+async def resolve(
+    ticket_id: str, store: StoreDep, people: PeopleDep, user: CurrentUser
+) -> TicketRecord:
+    return _apply(store, ticket_id, lambda r: review.resolve(r, user), people, user)

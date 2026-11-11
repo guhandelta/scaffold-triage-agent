@@ -26,6 +26,10 @@ DEFAULT_CONFIG = BACKEND_DIR / "triage.yaml"
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 Phrase = Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=1)]
+TeamKey = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, to_lower=True, pattern=r"^[a-z0-9][a-z0-9-]{0,39}$"),
+]
 ProviderName = Literal["claude", "openai", "google"]
 
 
@@ -65,6 +69,10 @@ class Routing(_Strict):
     human_only: list[Phrase] = Field(
         default_factory=lambda: list(DEFAULT_HUMAN_ONLY),
         description="Phrases that send a ticket straight to a person. [] turns this off.",
+    )
+    teams: dict[TeamKey, list[Phrase]] = Field(
+        default_factory=dict,
+        description="Team name -> phrases that send a ticket to that team. The first match wins.",
     )
 
 

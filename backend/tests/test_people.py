@@ -275,12 +275,12 @@ def test_deactivating_returns_open_tickets_to_the_queue(people_store):
     )
     assert r.json()["active"] is False
 
-    released = client.get(f"/api/tickets/{ticket['ticket_id']}").json()
+    released = client.get(f"/api/tickets/{ticket['ticket_id']}", headers=ADMIN).json()
     assert released["owner"] is None
     assert released["history"][-1]["kind"] == "released"
     assert released["history"][-1]["actor"] == "Admin"
     # A resolved ticket keeps the owner it was closed with.
-    assert client.get(f"/api/tickets/{done['ticket_id']}").json()["owner"] == "Lee"
+    assert client.get(f"/api/tickets/{done['ticket_id']}", headers=ADMIN).json()["owner"] == "Lee"
 
 
 def test_reactivating_does_not_touch_tickets(people_store):

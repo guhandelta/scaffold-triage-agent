@@ -160,6 +160,16 @@ class PeopleStore:
             self._log(person_id, kind, f"{kind.capitalize()}: {reason}", actor)
             return self._person(person_id)
 
+    def teams_of(self, name: str) -> set[str]:
+        """Teams of the active person with this name. Anyone not in the directory has none."""
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT m.team FROM people p JOIN memberships m ON m.person_id = p.id "
+                "WHERE lower(p.name) = lower(?) AND p.active = 1",
+                (name,),
+            ).fetchall()
+        return {team for (team,) in rows}
+
     def history(self, person_id: str) -> list[PersonEvent]:
         with self._lock:
             self._person(person_id)

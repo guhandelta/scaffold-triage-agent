@@ -42,6 +42,12 @@ def assign(record: TicketRecord, owner: str, user: User) -> TicketRecord:
     return _with(record, "assigned", f"Assigned to {owner}", user, owner=owner)
 
 
+def set_team(record: TicketRecord, team: str, user: User) -> TicketRecord:
+    require(user, Permission.assign)
+    _open(record)
+    return _with(record, "team", f"Moved to team {team}", user, team=team)
+
+
 def confirm(record: TicketRecord, user: User) -> TicketRecord:
     require(user, Permission.confirm)
     _open(record)

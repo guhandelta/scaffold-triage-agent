@@ -74,7 +74,7 @@ async def run_triage(
     ticket_id = uuid.uuid4().hex[:12]
     history = [_event("received", f"Subject: {ticket.subject}", "system")]
 
-    route = route_ticket(ticket, config.routing.human_only)
+    route = route_ticket(ticket, config.routing.human_only, config.routing.teams)
     history.append(_event("routed", f"{route.route.value}: {route.reason}", "rules"))
 
     sources = kb.search(f"{ticket.subject}\n{ticket.body}", k=config.docs.top_k)
@@ -110,6 +110,7 @@ async def run_triage(
         ticket=ticket,
         result=result,
         status=status_for(decision),
+        team=route.team,
         history=history,
     )
     return store.save(record)

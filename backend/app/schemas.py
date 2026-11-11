@@ -235,6 +235,22 @@ class ApprovalDecisionIn(BaseModel):
     note: str = Field(default="", max_length=1000, description="Required when rejecting")
 
 
+class ApproveIn(BaseModel):
+    include: list[int] | None = Field(
+        default=None,
+        description="For a batch of new tickets: the positions to create. Empty or omitted "
+        "means all of them.",
+    )
+
+
+class ApprovalDetail(ApprovalRequest):
+    """A request plus the ticket it changes as it is now, so the approver sees the current state."""
+
+    current: "TicketRecord | None" = Field(
+        default=None, description="The ticket as it is now, if it still exists and you may see it"
+    )
+
+
 class NoteIn(BaseModel):
     text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
 

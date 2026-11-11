@@ -279,3 +279,95 @@ def test_the_approval_store_opens_once_at_the_configured_path(tmp_path, monkeypa
     finally:
         get_settings.cache_clear()
         monkeypatch.setattr(approvals_module, "_store", None)
+
+
+# Batches and the current state of a request
+
+
+def _batch_upload() -> str:
+    csv = b"subject,body\nRefund,money back\nHello,hi there\nPassword,reset it\n"
+    response = client.post(
+        "/api/tickets/upload", files={"file": ("t.csv", csv, "text/csv")}, headers=AGENT
+    )
+    assert response.status_code == 202
+    return response.json()["id"]
+
+
+def test_an_admin_can_approve_only_some_tickets_of_a_batch(approval_store):
+    request_id = _batch_upload()
+    approved = client.post(
+        f"/api/approvals/{request_id}/approve", json={"include": [0, 2]}, headers=ADMIN
+    )
+    assert approved.status_code == 200
+    assert approved.json()["decision_note"] == "approved 2 of 3"
+    assert len(client.get("/api/tickets", headers=ADMIN).json()) == 2
+
+
+def test_approving_with_no_picks_creates_the_whole_batch(approval_store):
+    request_id = _batch_upload()
+    approved = client.post(
+        f"/api/approvals/{request_id}/approve", json={"include": []}, headers=ADMIN
+    )
+    assert approved.status_code == 200
+    assert approved.json()["decision_note"] == ""
+    assert len(client.get("/api/tickets", headers=ADMIN).json()) == 3
+
+
+def test_a_pick_outside_the_batch_is_refused(approval_store):
+    request_id = _batch_upload()
+    response = client.post(
+        f"/api/approvals/{request_id}/approve", json={"include": [7]}, headers=ADMIN
+    )
+    assert response.status_code == 422
+    assert approval_store.get(request_id).status == ApprovalStatus.pending
+
+
+def test_the_card_shows_the_ticket_as_it_is_now(approval_store):
+    ticket_id = _ticket()
+    pending = client.post(
+        f"/api/tickets/{ticket_id}/override",
+        json={"action": "escalate", "reason": "check"},
+        headers=AGENT,
+    ).json()["id"]
+    detail = client.get(f"/api/approvals/{pending}", headers=ADMIN).json()
+    assert detail["action"] == "override"
+    assert detail["current"]["ticket_id"] == ticket_id
+    assert detail["current"]["override"] is None
+
+
+def test_the_card_has_no_ticket_once_it_is_gone(approval_store):
+    ticket_id = _ticket()
+    pending = client.delete(f"/api/tickets/{ticket_id}", headers=AGENT).json()["id"]
+    client.delete(f"/api/tickets/{ticket_id}", headers=ADMIN)
+    detail = client.get(f"/api/approvals/{pending}", headers=ADMIN).json()
+    assert detail["current"] is None
+
+
+def test_a_batch_card_has_no_single_ticket(approval_store):
+    request_id = _batch_upload()
+    assert client.get(f"/api/approvals/{request_id}", headers=ADMIN).json()["current"] is None
+
+
+def test_the_requester_sees_their_card_and_others_do_not(approval_store):
+    pending = _pending(AGENT)
+    assert client.get(f"/api/approvals/{pending}", headers=AGENT).status_code == 200
+    assert client.get(f"/api/approvals/{pending}", headers=ANA).status_code == 404
+    assert client.get("/api/approvals/nope", headers=ADMIN).status_code == 404
+
+
+def test_the_card_hides_a_ticket_the_requester_has_since_lost_access_to(
+    approval_store, people_store
+):
+    ticket_id = _ticket()
+    client.post(f"/api/tickets/{ticket_id}/team", json={"team": "billing"}, headers=ADMIN)
+    sam = people_store.add_person("Sam", None, "Admin").id
+    people_store.add_membership(sam, "billing", Role.agent, "Admin")
+    pending = client.post(
+        f"/api/tickets/{ticket_id}/override",
+        json={"action": "escalate", "reason": "x"},
+        headers=AGENT,
+    )
+    assert pending.status_code == 202
+    people_store.remove_membership(sam, "billing", "Admin")
+    detail = client.get(f"/api/approvals/{pending.json()['id']}", headers=AGENT).json()
+    assert detail["current"] is None

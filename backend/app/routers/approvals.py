@@ -1,22 +1,28 @@
-"""Requests that wait for an admin: list them, then approve (the change happens) or reject."""
+"""Requests that wait for an admin: list them, see each one's current state, then approve or reject.
+
+Approving runs the change as the person who asked for it, so their permissions still apply.
+"""
 
 from fastapi import APIRouter, HTTPException
 
 from app import review
 from app.approvals import ApprovalNotFound, ApprovalStore
 from app.auth import CurrentUser, require, user_for
-from app.deps import ApprovalsDep, ChainDep, ConfigDep, KbDep, StoreDep
+from app.deps import ApprovalsDep, ChainDep, ConfigDep, KbDep, PeopleDep, StoreDep
 from app.org_config import OrgConfig
 from app.routers.tickets import _load
 from app.schemas import (
     ApprovalDecisionIn,
+    ApprovalDetail,
     ApprovalRequest,
+    ApproveIn,
     OverrideIn,
     Permission,
     TeamIn,
     TicketIn,
     User,
 )
+from app.scope import can_see
 from app.service import run_triage
 from app.store import TicketNotFound, TicketStore
 
@@ -30,6 +36,15 @@ def _get(approvals: ApprovalStore, approval_id: str) -> ApprovalRequest:
         raise HTTPException(status_code=404, detail="request not found") from None
 
 
+def _picked(request: ApprovalRequest, include: list[int] | None) -> list[dict]:
+    tickets = request.payload["tickets"]
+    if not include:
+        return tickets
+    if any(i < 0 or i >= len(tickets) for i in include):
+        raise HTTPException(status_code=422, detail="include names a ticket not in this batch")
+    return [tickets[i] for i in sorted(set(include))]
+
+
 async def _carry_out(
     request: ApprovalRequest,
     who: User,
@@ -37,13 +52,16 @@ async def _carry_out(
     store: TicketStore,
     kb,
     config: OrgConfig,
-) -> None:
-    """Do the approved change as the person who asked for it, so their permissions still apply."""
+    include: list[int] | None = None,
+) -> str:
+    """Do the approved change. Returns a note for the record, such as how many of a batch."""
     if request.action == Permission.create:
         require(who, Permission.create)
-        for raw in request.payload["tickets"]:
+        chosen = _picked(request, include)
+        for raw in chosen:
             await run_triage(TicketIn.model_validate(raw), chain, store, kb, config)
-        return
+        total = len(request.payload["tickets"])
+        return "" if len(chosen) == total else f"approved {len(chosen)} of {total}"
     if request.ticket_id is None:
         raise HTTPException(status_code=409, detail="request names no ticket")
     if request.action == Permission.delete:
@@ -52,7 +70,7 @@ async def _carry_out(
             store.delete(request.ticket_id)
         except TicketNotFound:
             raise HTTPException(status_code=404, detail="ticket not found") from None
-        return
+        return ""
 
     record = _load(store, request.ticket_id)
     try:
@@ -63,6 +81,7 @@ async def _carry_out(
     except review.ReviewError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail) from None
     store.save(changed)
+    return ""
 
 
 @router.get("", response_model=list[ApprovalRequest])
@@ -71,6 +90,29 @@ async def list_requests(approvals: ApprovalsDep, user: CurrentUser) -> list[Appr
     if Permission.approve in user.permissions:
         return approvals.list()
     return approvals.list(requested_by=user.name)
+
+
+@router.get("/{approval_id}", response_model=ApprovalDetail)
+async def get_request(
+    approval_id: str,
+    approvals: ApprovalsDep,
+    store: StoreDep,
+    people: PeopleDep,
+    user: CurrentUser,
+) -> ApprovalDetail:
+    """One request, with the ticket it changes as it is now. Admins and the requester only."""
+    request = _get(approvals, approval_id)
+    if Permission.approve not in user.permissions and request.requested_by != user.name:
+        raise HTTPException(status_code=404, detail="request not found")
+    current = None
+    if request.ticket_id is not None:
+        try:
+            record = store.get(request.ticket_id)
+        except TicketNotFound:
+            record = None
+        if record is not None and can_see(user, record, people.teams_of(user.name)):
+            current = record
+    return ApprovalDetail(**request.model_dump(), current=current)
 
 
 @router.post("/{approval_id}/approve", response_model=ApprovalRequest)
@@ -82,15 +124,20 @@ async def approve(
     kb: KbDep,
     config: ConfigDep,
     user: CurrentUser,
+    body: ApproveIn | None = None,
 ) -> ApprovalRequest:
-    """Approve the request and do the change. If the change fails, the request stays pending."""
+    """Approve the request and do the change. For a batch, `include` picks which tickets.
+
+    If the change fails, the request stays pending.
+    """
     require(user, Permission.approve)
     request = _get(approvals, approval_id)
     if request.status != "pending":
         raise HTTPException(status_code=409, detail="request is already decided")
     who = user_for(request.requested_by, request.requested_role, config.access)
-    await _carry_out(request, who, chain, store, kb, config)
-    return approvals.decide(approval_id, True, user.name, "")
+    include = body.include if body else None
+    note = await _carry_out(request, who, chain, store, kb, config, include)
+    return approvals.decide(approval_id, True, user.name, note)
 
 
 @router.post("/{approval_id}/reject", response_model=ApprovalRequest)

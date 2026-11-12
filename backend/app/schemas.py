@@ -122,6 +122,7 @@ class TicketRecord(BaseModel):
     history: list[HistoryEvent] = Field(default_factory=list)
     archived_at: datetime | None = Field(default=None, description="Set when archived, not deleted")
     archived_by: str | None = None
+    keep: bool = Field(default=False, description="Admin label: never remove, even after a year")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -219,9 +220,36 @@ class ApprovalStatus(StrEnum):
 
 
 class SweepResult(BaseModel):
-    expired_requests: int
-    purged_requests: int
-    purged_tickets: int
+    noticed: int = Field(description="New notices for an admin to confirm or dismiss")
+
+
+class CleanupKind(StrEnum):
+    expire_request = "expire_request"
+    remove_request = "remove_request"
+    remove_ticket = "remove_ticket"
+
+
+class NoticeStatus(StrEnum):
+    open = "open"
+    done = "done"
+    dismissed = "dismissed"
+
+
+class Notice(BaseModel):
+    """A cleanup step the sweep proposes. Nothing happens until an admin confirms it."""
+
+    id: str
+    kind: CleanupKind
+    target_id: str
+    summary: str
+    status: NoticeStatus = NoticeStatus.open
+    created_at: datetime = Field(default_factory=now)
+    decided_by: str | None = None
+    decided_at: datetime | None = None
+
+
+class KeepIn(BaseModel):
+    keep: bool
 
 
 class ApprovalRequest(BaseModel):

@@ -150,10 +150,10 @@ class Retention(_Strict):
     """How long things are kept. Old items are removed by the admin's cleanup, never sooner."""
 
     archived_days: int = Field(
-        default=180, ge=1, description="Archived tickets are removed after this many days."
+        default=365, ge=1, description="Archived tickets are proposed for removal after this."
     )
     decided_requests_days: int = Field(
-        default=180, ge=1, description="Approved, rejected or expired requests are kept this long."
+        default=365, ge=1, description="Approved, rejected or expired requests are kept this long."
     )
     request_expiry_days: int = Field(
         default=30, ge=1, description="A request nobody decides closes as expired after this."

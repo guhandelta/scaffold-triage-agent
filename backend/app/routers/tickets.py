@@ -10,6 +10,7 @@ from app.ingest import UploadError, parse_upload
 from app.people import PeopleStore
 from app.schemas import (
     AssignIn,
+    KeepIn,
     NoteIn,
     OverrideIn,
     Permission,
@@ -163,6 +164,14 @@ async def delete_ticket(
         return queue(approvals, Permission.delete, user, {}, ticket_id)
     _apply(store, ticket_id, lambda r: review.archive(r, user), people, user)
     return None
+
+
+@router.post("/tickets/{ticket_id}/keep", response_model=TicketRecord)
+async def keep(
+    ticket_id: str, body: KeepIn, store: StoreDep, people: PeopleDep, user: CurrentUser
+) -> TicketRecord:
+    """Mark a ticket to keep, so the yearly cleanup never proposes removing it."""
+    return _apply(store, ticket_id, lambda r: review.set_keep(r, body.keep, user), people, user)
 
 
 @router.post("/tickets/{ticket_id}/restore", response_model=TicketRecord)

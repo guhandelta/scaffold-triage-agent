@@ -17,7 +17,17 @@ from threading import Lock
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
-from app.schemas import ApprovalRequest, ApprovalStatus, Permission, Role, User, now
+from app.schemas import (
+    ApprovalRequest,
+    ApprovalStatus,
+    CleanupKind,
+    Notice,
+    NoticeStatus,
+    Permission,
+    Role,
+    User,
+    now,
+)
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS approvals (
@@ -33,6 +43,16 @@ CREATE TABLE IF NOT EXISTS approvals (
     created_at     TEXT NOT NULL,
     decided_at     TEXT
 );
+CREATE TABLE IF NOT EXISTS cleanup_notices (
+    id         TEXT PRIMARY KEY,
+    kind       TEXT NOT NULL,
+    target_id  TEXT NOT NULL,
+    summary    TEXT NOT NULL,
+    status     TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    decided_by TEXT,
+    decided_at TEXT
+);
 """
 
 _COLUMNS = (
@@ -47,6 +67,10 @@ class ApprovalNotFound(KeyError):
 
 class ApprovalClosed(Exception):
     """The request was already approved or rejected."""
+
+
+class NoticeNotFound(KeyError):
+    pass
 
 
 class ApprovalStore:
@@ -136,7 +160,7 @@ class ApprovalStore:
     def pending(self) -> list[ApprovalRequest]:
         return [r for r in self.list() if r.status == ApprovalStatus.pending]
 
-    def expire(self, approval_id: str, note: str) -> ApprovalRequest:
+    def expire(self, approval_id: str, note: str, actor: str) -> ApprovalRequest:
         """Close a request nobody can act on any more. It is kept, not deleted."""
         with self._lock:
             self._db.execute(
@@ -144,7 +168,7 @@ class ApprovalStore:
                 "decided_at = ? WHERE id = ? AND status = ?",
                 (
                     ApprovalStatus.expired.value,
-                    "system",
+                    actor,
                     note,
                     now().isoformat(),
                     approval_id,
@@ -154,15 +178,91 @@ class ApprovalStore:
             self._db.commit()
         return self.get(approval_id)
 
-    def purge_decided_before(self, cutoff: datetime) -> int:
-        """Remove requests decided before the cutoff. Pending ones are never removed."""
+    def decided_before(self, cutoff: datetime) -> list[ApprovalRequest]:
+        """Requests decided before the cutoff. Pending ones are never included."""
+        return [
+            r
+            for r in self.list()
+            if r.status != ApprovalStatus.pending
+            and r.decided_at is not None
+            and r.decided_at < cutoff
+        ]
+
+    def delete_request(self, approval_id: str) -> None:
         with self._lock:
-            cursor = self._db.execute(
-                "DELETE FROM approvals WHERE status != ? AND decided_at < ?",
-                (ApprovalStatus.pending.value, cutoff.isoformat()),
+            self._db.execute("DELETE FROM approvals WHERE id = ?", (approval_id,))
+            self._db.commit()
+
+    def has_notice(self, target_id: str) -> bool:
+        """True if the target already has a notice, open or dismissed, so it is not raised twice."""
+        with self._lock:
+            row = self._db.execute(
+                "SELECT 1 FROM cleanup_notices WHERE target_id = ?", (target_id,)
+            ).fetchone()
+        return row is not None
+
+    def add_notice(self, kind: CleanupKind, target_id: str, summary: str) -> Notice:
+        notice = Notice(id=uuid.uuid4().hex[:12], kind=kind, target_id=target_id, summary=summary)
+        with self._lock:
+            self._db.execute(
+                "INSERT INTO cleanup_notices (id, kind, target_id, summary, status, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    notice.id,
+                    kind.value,
+                    target_id,
+                    summary,
+                    notice.status.value,
+                    notice.created_at.isoformat(),
+                ),
             )
             self._db.commit()
-        return cursor.rowcount
+        return notice
+
+    def _notice_row(self, row: tuple) -> Notice:
+        id_, kind, target, summary, status, created, decided_by, decided_at = row
+        return Notice(
+            id=id_,
+            kind=CleanupKind(kind),
+            target_id=target,
+            summary=summary,
+            status=NoticeStatus(status),
+            created_at=created,
+            decided_by=decided_by,
+            decided_at=decided_at,
+        )
+
+    def open_notices(self) -> list[Notice]:
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT id, kind, target_id, summary, status, created_at, decided_by, decided_at "
+                "FROM cleanup_notices WHERE status = ? ORDER BY created_at",
+                (NoticeStatus.open.value,),
+            ).fetchall()
+        return [self._notice_row(r) for r in rows]
+
+    def get_notice(self, notice_id: str) -> Notice:
+        with self._lock:
+            row = self._db.execute(
+                "SELECT id, kind, target_id, summary, status, created_at, decided_by, decided_at "
+                "FROM cleanup_notices WHERE id = ?",
+                (notice_id,),
+            ).fetchone()
+        if row is None:
+            raise NoticeNotFound(notice_id)
+        return self._notice_row(row)
+
+    def close_notice(self, notice_id: str, status: NoticeStatus, actor: str) -> Notice:
+        if self.get_notice(notice_id).status != NoticeStatus.open:
+            raise ApprovalClosed(notice_id)
+        with self._lock:
+            self._db.execute(
+                "UPDATE cleanup_notices SET status = ?, decided_by = ?, decided_at = ? "
+                "WHERE id = ?",
+                (status.value, actor, now().isoformat(), notice_id),
+            )
+            self._db.commit()
+        return self.get_notice(notice_id)
 
     def decide(self, approval_id: str, approve: bool, actor: str, note: str) -> ApprovalRequest:
         current = self.get(approval_id)

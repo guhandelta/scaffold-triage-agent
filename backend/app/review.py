@@ -48,6 +48,13 @@ def archive(record: TicketRecord, user: User) -> TicketRecord:
     return _with(record, "archived", "Archived", user, archived_at=now(), archived_by=user.name)
 
 
+def set_keep(record: TicketRecord, keep: bool, user: User) -> TicketRecord:
+    """Label a ticket so the cleanup never removes it, or take the label off."""
+    require(user, Permission.delete)
+    text = "Marked to keep" if keep else "Removed the keep mark"
+    return _with(record, "kept" if keep else "unkept", text, user, keep=keep)
+
+
 def restore(record: TicketRecord, user: User) -> TicketRecord:
     require(user, Permission.delete)
     if record.archived_at is None:

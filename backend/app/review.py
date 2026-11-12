@@ -16,6 +16,7 @@ from app.schemas import (
     TicketRecord,
     TicketStatus,
     User,
+    now,
 )
 from app.service import status_for
 
@@ -33,8 +34,27 @@ def _with(record: TicketRecord, kind: str, detail: str, user: User, **changes) -
 
 
 def _open(record: TicketRecord) -> None:
+    if record.archived_at is not None:
+        raise ReviewError(409, "ticket is archived")
     if record.status == TicketStatus.resolved:
         raise ReviewError(409, "ticket is already resolved")
+
+
+def archive(record: TicketRecord, user: User) -> TicketRecord:
+    """Hide a ticket from everyone's lists. It is kept until the cleanup removes it."""
+    require(user, Permission.delete)
+    if record.archived_at is not None:
+        raise ReviewError(409, "ticket is already archived")
+    return _with(record, "archived", "Archived", user, archived_at=now(), archived_by=user.name)
+
+
+def restore(record: TicketRecord, user: User) -> TicketRecord:
+    require(user, Permission.delete)
+    if record.archived_at is None:
+        raise ReviewError(409, "ticket is not archived")
+    return _with(
+        record, "restored", "Restored from the archive", user, archived_at=None, archived_by=None
+    )
 
 
 def assign(record: TicketRecord, owner: str, user: User) -> TicketRecord:

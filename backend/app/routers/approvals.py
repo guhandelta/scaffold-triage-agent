@@ -64,16 +64,11 @@ async def _carry_out(
         return "" if len(chosen) == total else f"approved {len(chosen)} of {total}"
     if request.ticket_id is None:
         raise HTTPException(status_code=409, detail="request names no ticket")
-    if request.action == Permission.delete:
-        require(who, Permission.delete)
-        try:
-            store.delete(request.ticket_id)
-        except TicketNotFound:
-            raise HTTPException(status_code=404, detail="ticket not found") from None
-        return ""
-
     record = _load(store, request.ticket_id)
     try:
+        if request.action == Permission.delete:
+            store.save(review.archive(record, who))
+            return ""
         if request.action == Permission.move:
             changed = review.set_team(record, TeamIn(**request.payload).team, who)
         else:

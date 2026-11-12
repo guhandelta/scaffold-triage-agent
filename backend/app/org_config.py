@@ -146,6 +146,20 @@ class Access(_Strict):
         return permission in self.approval.get(role, [])
 
 
+class Retention(_Strict):
+    """How long things are kept. Old items are removed by the admin's cleanup, never sooner."""
+
+    archived_days: int = Field(
+        default=180, ge=1, description="Archived tickets are removed after this many days."
+    )
+    decided_requests_days: int = Field(
+        default=180, ge=1, description="Approved, rejected or expired requests are kept this long."
+    )
+    request_expiry_days: int = Field(
+        default=30, ge=1, description="A request nobody decides closes as expired after this."
+    )
+
+
 class OrgConfig(_Strict):
     organization: Organization = Organization()
     docs: Docs = Docs()
@@ -153,6 +167,7 @@ class OrgConfig(_Strict):
     agent: Agent = Agent()
     replies: Replies = Replies()
     access: Access = Access()
+    retention: Retention = Retention()
 
     # Set by `load`: the folder relative paths are read from. Not part of the file.
     base_dir: Path = Field(default=BACKEND_DIR, exclude=True)

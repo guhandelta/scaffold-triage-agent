@@ -55,21 +55,40 @@ async def me(user: CurrentUser) -> User:
     return user
 
 
-def _seen_by(records: list[TicketRecord], people: PeopleStore, user: User) -> list[TicketRecord]:
+def _seen_by(
+    records: list[TicketRecord],
+    people: PeopleStore,
+    user: User,
+    include_archived: bool = False,
+) -> list[TicketRecord]:
+    """What the caller may see. Archived tickets are hidden unless an admin asks for them."""
     teams = people.teams_of(user.name)
-    return [r for r in records if can_see(user, r, teams)]
+    visible = [r for r in records if can_see(user, r, teams)]
+    if include_archived and Permission.delete in user.permissions:
+        return visible
+    return [r for r in visible if r.archived_at is None]
 
 
 @router.get("/tickets", response_model=list[TicketRecord])
-async def list_tickets(store: StoreDep, people: PeopleDep, user: CurrentUser) -> list[TicketRecord]:
+async def list_tickets(
+    store: StoreDep,
+    people: PeopleDep,
+    user: CurrentUser,
+    include_archived: bool = False,
+) -> list[TicketRecord]:
     """Every triaged ticket the caller may see, newest first."""
-    return _seen_by(store.list_all(), people, user)
+    return _seen_by(store.list_all(), people, user, include_archived)
 
 
 @router.get("/escalations", response_model=list[TicketRecord])
-async def escalations(store: StoreDep, people: PeopleDep, user: CurrentUser) -> list[TicketRecord]:
+async def escalations(
+    store: StoreDep,
+    people: PeopleDep,
+    user: CurrentUser,
+    include_archived: bool = False,
+) -> list[TicketRecord]:
     """Open tickets a person must handle that the caller may see, newest first."""
-    return _seen_by(store.escalations(), people, user)
+    return _seen_by(store.escalations(), people, user, include_archived)
 
 
 @router.post("/tickets/upload", response_model=UploadResult)
@@ -137,13 +156,21 @@ async def delete_ticket(
     config: ConfigDep,
     approvals: ApprovalsDep,
 ):
-    """Remove a ticket for good. Waits for an admin if the role needs it."""
+    """Archive a ticket: it leaves the lists but is kept. Admin approval may be needed first."""
     require(user, Permission.delete)
     _visible(_load(store, ticket_id), people, user)
     if config.access.needs_approval(user.role, Permission.delete):
         return queue(approvals, Permission.delete, user, {}, ticket_id)
-    store.delete(ticket_id)
+    _apply(store, ticket_id, lambda r: review.archive(r, user), people, user)
     return None
+
+
+@router.post("/tickets/{ticket_id}/restore", response_model=TicketRecord)
+async def restore(
+    ticket_id: str, store: StoreDep, people: PeopleDep, user: CurrentUser
+) -> TicketRecord:
+    """Bring an archived ticket back to the lists."""
+    return _apply(store, ticket_id, lambda r: review.restore(r, user), people, user)
 
 
 @router.post("/tickets/{ticket_id}/confirm", response_model=TicketRecord)

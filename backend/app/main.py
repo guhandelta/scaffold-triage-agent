@@ -4,7 +4,7 @@ from fastapi.routing import APIRoute
 
 from app.config import get_settings
 from app.deps import ChainDep, ConfigDep, KbDep
-from app.routers import approvals, people, tickets, triage
+from app.routers import approvals, maintenance, people, tickets, triage
 from app.schemas import Health
 
 
@@ -30,6 +30,7 @@ app.include_router(triage.router)
 app.include_router(tickets.router)
 app.include_router(people.router)
 app.include_router(approvals.router)
+app.include_router(maintenance.router)
 
 
 @app.get("/api/health", response_model=Health, tags=["meta"])

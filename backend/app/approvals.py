@@ -5,9 +5,12 @@ actions wait for an admin: the request is saved, nothing changes, and an admin a
 it. Approving runs the action as the person who asked, so their permissions still apply.
 """
 
+from __future__ import annotations
+
 import json
 import sqlite3
 import uuid
+from datetime import datetime
 from pathlib import Path
 from threading import Lock
 
@@ -129,6 +132,37 @@ class ApprovalStore:
         with self._lock:
             rows = self._db.execute(f"{query} ORDER BY created_at DESC, rowid DESC", args)
             return [self._row(r) for r in rows.fetchall()]
+
+    def pending(self) -> list[ApprovalRequest]:
+        return [r for r in self.list() if r.status == ApprovalStatus.pending]
+
+    def expire(self, approval_id: str, note: str) -> ApprovalRequest:
+        """Close a request nobody can act on any more. It is kept, not deleted."""
+        with self._lock:
+            self._db.execute(
+                "UPDATE approvals SET status = ?, decided_by = ?, decision_note = ?, "
+                "decided_at = ? WHERE id = ? AND status = ?",
+                (
+                    ApprovalStatus.expired.value,
+                    "system",
+                    note,
+                    now().isoformat(),
+                    approval_id,
+                    ApprovalStatus.pending.value,
+                ),
+            )
+            self._db.commit()
+        return self.get(approval_id)
+
+    def purge_decided_before(self, cutoff: datetime) -> int:
+        """Remove requests decided before the cutoff. Pending ones are never removed."""
+        with self._lock:
+            cursor = self._db.execute(
+                "DELETE FROM approvals WHERE status != ? AND decided_at < ?",
+                (ApprovalStatus.pending.value, cutoff.isoformat()),
+            )
+            self._db.commit()
+        return cursor.rowcount
 
     def decide(self, approval_id: str, approve: bool, actor: str, note: str) -> ApprovalRequest:
         current = self.get(approval_id)

@@ -120,6 +120,8 @@ class TicketRecord(BaseModel):
     confirmed_by: str | None = None
     notes: list[Note] = Field(default_factory=list)
     history: list[HistoryEvent] = Field(default_factory=list)
+    archived_at: datetime | None = Field(default=None, description="Set when archived, not deleted")
+    archived_by: str | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -213,6 +215,13 @@ class ApprovalStatus(StrEnum):
     pending = "pending"
     approved = "approved"
     rejected = "rejected"
+    expired = "expired"  # nobody decided in time, or the ticket is no longer open
+
+
+class SweepResult(BaseModel):
+    expired_requests: int
+    purged_requests: int
+    purged_tickets: int
 
 
 class ApprovalRequest(BaseModel):

@@ -145,7 +145,12 @@ def test_an_agent_delete_waits_then_removes_on_approval(approval_store):
     assert pending.status_code == 202
     assert client.get(f"/api/tickets/{ticket_id}", headers=ADMIN).status_code == 200
     client.post(f"/api/approvals/{pending.json()['id']}/approve", headers=ADMIN)
-    assert client.get(f"/api/tickets/{ticket_id}", headers=ADMIN).status_code == 404
+    archived = client.get(f"/api/tickets/{ticket_id}", headers=ADMIN).json()
+    assert archived["archived_at"] is not None
+    assert archived["archived_by"] == "Sam"
+    assert ticket_id not in [
+        t["ticket_id"] for t in client.get("/api/tickets", headers=ADMIN).json()
+    ]
 
 
 def test_a_reviewer_moves_directly_and_an_admin_deletes_directly(approval_store):
@@ -155,7 +160,8 @@ def test_a_reviewer_moves_directly_and_an_admin_deletes_directly(approval_store)
     )
     assert moved.status_code == 200
     assert client.delete(f"/api/tickets/{ticket_id}", headers=ADMIN).status_code == 204
-    assert client.delete(f"/api/tickets/{ticket_id}", headers=ADMIN).status_code == 404
+    # Archiving twice is refused, and the ticket is still kept.
+    assert client.delete(f"/api/tickets/{ticket_id}", headers=ADMIN).status_code == 409
 
 
 def test_a_viewer_cannot_delete_or_move(approval_store):
@@ -335,12 +341,12 @@ def test_the_card_shows_the_ticket_as_it_is_now(approval_store):
     assert detail["current"]["override"] is None
 
 
-def test_the_card_has_no_ticket_once_it_is_gone(approval_store):
+def test_the_card_shows_a_ticket_archived_since_the_request(approval_store):
     ticket_id = _ticket()
     pending = client.delete(f"/api/tickets/{ticket_id}", headers=AGENT).json()["id"]
     client.delete(f"/api/tickets/{ticket_id}", headers=ADMIN)
     detail = client.get(f"/api/approvals/{pending}", headers=ADMIN).json()
-    assert detail["current"] is None
+    assert detail["current"]["archived_at"] is not None
 
 
 def test_a_batch_card_has_no_single_ticket(approval_store):

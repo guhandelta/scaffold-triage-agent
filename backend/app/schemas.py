@@ -146,12 +146,19 @@ Email = Annotated[
     BeforeValidator(_clean),
     StringConstraints(max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$"),
 ]
+EmployeeId = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=40),
+]
 Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
 
 
 class Membership(BaseModel):
     team: str
     role: Role
+    details: dict[str, str] = Field(
+        default_factory=dict, description="Values for the team's fields"
+    )
 
 
 class Person(BaseModel):
@@ -159,6 +166,7 @@ class Person(BaseModel):
     name: str
     email: str | None = None
     active: bool
+    employee_id: str | None = None
     memberships: list[Membership] = Field(default_factory=list)
 
 
@@ -174,11 +182,95 @@ class PersonEvent(BaseModel):
 class PersonIn(BaseModel):
     name: Name
     email: Email | None = None
+    employee_id: EmployeeId | None = None
 
 
 class MembershipIn(BaseModel):
     team: TeamName
     role: Role
+
+
+class FieldType(StrEnum):
+    text = "text"
+    date = "date"
+    choice = "choice"
+
+
+FieldKey = Annotated[
+    str,
+    BeforeValidator(_clean),
+    StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,39}$"),
+]
+
+
+class TeamField(BaseModel):
+    """A value every member of the team has, such as a start date. The admin decides these."""
+
+    key: FieldKey
+    label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
+    type: FieldType = FieldType.text
+    choices: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]] = Field(
+        default_factory=list, description="The allowed values, for a choice field"
+    )
+    required: bool = False
+
+    @model_validator(mode="after")
+    def choices_match_type(self):
+        if self.type == FieldType.choice and not self.choices:
+            raise ValueError("a choice field needs at least one choice")
+        if self.type != FieldType.choice and self.choices:
+            raise ValueError("only a choice field can have choices")
+        return self
+
+
+class Team(BaseModel):
+    name: str
+    fields: list[TeamField] = Field(default_factory=list)
+    created_at: datetime
+    created_by: str
+
+
+class TeamEvent(BaseModel):
+    kind: str
+    detail: str
+    actor: str
+    at: datetime = Field(default_factory=now)
+
+
+class TeamCreateIn(BaseModel):
+    name: TeamName
+    fields: list[TeamField] = Field(default_factory=list)
+
+
+class FieldsIn(BaseModel):
+    fields: list[TeamField]
+
+
+class MemberIn(BaseModel):
+    name: Name
+    email: Email | None = None
+    employee_id: EmployeeId | None = None
+    role: Role = Role.agent
+    details: dict[str, str] = Field(default_factory=dict)
+
+
+class ImportRowPlan(BaseModel):
+    """What one row of a member import would do. Nothing is written until the plan is confirmed."""
+
+    line: int
+    name: str
+    email: str | None = None
+    employee_id: str | None = None
+    role: Role | None = None
+    action: str = Field(description="add, link, or error")
+    problems: list[str] = Field(default_factory=list)
+
+
+class ImportPlan(BaseModel):
+    team: str
+    committed: bool = Field(description="True once the members have been added")
+    can_commit: bool = Field(description="True when every row is valid")
+    rows: list[ImportRowPlan]
 
 
 class RoleChangeIn(BaseModel):

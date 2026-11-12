@@ -181,7 +181,7 @@ def test_the_full_lifecycle_through_the_api(people_store):
     joined = client.post(
         f"/api/people/{pid}/memberships", json={"team": " Billing ", "role": "agent"}, headers=ADMIN
     ).json()
-    assert joined["memberships"] == [{"team": "billing", "role": "agent"}]
+    assert joined["memberships"] == [{"team": "billing", "role": "agent", "details": {}}]
 
     promoted = client.patch(
         f"/api/people/{pid}/memberships/Billing",
